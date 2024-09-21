@@ -1,0 +1,14 @@
+BINARY_DIR=bin
+BINARY_NAME=main
+
+build:
+	@mkdir -p $(BINARY_DIR)
+	@go build -o $(BINARY_DIR)/$(BINARY_NAME) cmd/main.go
+
+run: build
+	@./$(BINARY_DIR)/$(BINARY_NAME)
+
+clean:
+	@rm -rf $(BINARY_DIR)
+
+rebuild: clean build run
