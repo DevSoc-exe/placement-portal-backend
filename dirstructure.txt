@@ -1,0 +1,32 @@
+.
+├── Makefile
+├── api
+│   ├── handlers
+│   │   └── auth.go
+│   ├── middleware
+│   │   └── middleware.go
+│   └── server
+│       └── server.go
+├── bin
+│   └── main
+├── cmd
+│   └── main.go
+├── dirstructure.txt
+├── docker-compose.yml
+├── go.mod
+├── go.sum
+├── internal
+│   ├── config
+│   │   └── initializers.go
+│   ├── database
+│   │   └── database.go
+│   ├── keys
+│   │   ├── csrf-pub.pem
+│   │   └── csrf.pem
+│   ├── models
+│   │   └── usermodel.go
+│   └── pkg
+│       └── token.go
+└── scripts
+
+14 directories, 16 files
