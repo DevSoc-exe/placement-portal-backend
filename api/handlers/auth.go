@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -24,6 +23,8 @@ type RegisterRequest struct {
 	Password        string `json:"password" binding:"required"`
 	RollNum         string `json:"rollnum" binding:"required"`
 	YearOfAdmission int    `json:"year_of_admission" binding:"required"`
+	Branch          string `json:"branch"`
+	StudentType     string `json:"student_type"`
 }
 
 type LoginResponse struct {
@@ -44,7 +45,11 @@ func Login(s models.Store) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
 			return
 		}
-		log.Println(user)
+
+		if !user.IsVerified {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not Verified"})
+			return
+		}
 
 		// Compare the provided password with the stored hashed password
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
@@ -113,17 +118,62 @@ func Register(s models.Store) gin.HandlerFunc {
 			return
 		}
 
+		csrfToken, err := pkg.GenerateCSRFToken()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate CSRF token"})
+			return
+		}
+
+		userId := nanoid.New()
 		newauth := models.User{
-			ID:              nanoid.New(),
-			Email:           auth.Email,
-			Password:        string(hash[:]),
-			Name:            auth.Name,
-			YearOfAdmission: auth.YearOfAdmission,
-			RollNumber:      auth.RollNum,
+			ID:                userId,
+			Email:             auth.Email,
+			Password:          string(hash[:]),
+			Name:              auth.Name,
+			YearOfAdmission:   auth.YearOfAdmission,
+			RollNumber:        auth.RollNum,
+			Branch:            auth.Branch,
+			StudentType:       auth.StudentType,
+			VerificationToken: &csrfToken,
 		}
 
 		if err := s.CreateUser(&newauth); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		emailBody := pkg.CreateMailMessageWithVerificationToken(csrfToken, userId)
+		pkg.SendVerificationEmail(auth.Email, emailBody)
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+	}
+}
+
+type VerifyRequestBody struct {
+	Token string `json:"token" binding:"required"`
+}
+
+func HandleUserVerification(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uid := c.Param("uid")
+		if uid == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})
+			return
+		}
+
+		var token VerifyRequestBody
+		if err := c.ShouldBindJSON(&token); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		err := s.VerifyUser(uid, token.Token)
+		fmt.Println(err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to Verify User Token!",
+				"error": err})
 			return
 		}
 
@@ -134,7 +184,7 @@ func Register(s models.Store) gin.HandlerFunc {
 }
 
 func HandleLogoutUser(s models.Store) gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		authID, exists := c.Get("userID")
 		if !exists {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})

@@ -50,51 +50,74 @@ func (s *Database) createUserTable() error {
 		name VARCHAR(255) NOT NULL,
 		email VARCHAR(255) NOT NULL UNIQUE,
 		password VARCHAR(255) NOT NULL,
+		branch VARCHAR(100) NOT NULL,
 		rollnum VARCHAR(100) NOT NULL UNIQUE,
 		year_of_admission INT NOT NULL,
+		is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+		verification_token VARCHAR(255),
+		student_type ENUM('Regular', 'PU Meet', 'Leet') NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-						ON UPDATE CURRENT_TIMESTAMP
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 	);`
 
 	_, err := s.DB.Exec(query)
 	return err
 }
 
-func (db *Database) GetUserByEmail(email string) (*models.User, error) {
-    ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-    defer cancel()
-
-    query := `SELECT id, name, email, password, rollnum, year_of_admission FROM users WHERE email = ?;`
-    row := db.DB.QueryRowContext(ctx, query, email)
-
-    var user models.User
-    err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.RollNumber, &user.YearOfAdmission)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return nil, fmt.Errorf("no user found with email: %s", email)
-        }
-        return nil, err
-    }
-
-    return &user, nil
-}
-
-
-
 func (db *Database) CreateUser(user *models.User) error {
-    ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
 
-    query := `
-    INSERT INTO users (id, name, email, password, rollnum, year_of_admission, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW());
+	query := `
+    INSERT INTO users (id, name, email, password, rollnum, year_of_admission, branch, student_type, verification_token, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
     `
 
-    _, err := db.DB.ExecContext(ctx, query,user.ID, user.Name, user.Email, user.Password, user.RollNumber, user.YearOfAdmission)
-    if err != nil {
-        return err
-    }
+	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.Password, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken)
+	if err != nil {
+		return err
+	}
 
-    return nil
+	return nil
+}
+
+func (db *Database) GetUserByEmail(email string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	query := `SELECT id, name, email, password, rollnum, year_of_admission, branch, student_type, is_verified, verification_token FROM users WHERE email = ?;`
+	row := db.DB.QueryRowContext(ctx, query, email)
+
+	var user models.User
+	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no user found with email: %s", email)
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (db *Database) VerifyUser(userId, token string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET is_verified = TRUE, verification_token = NULL
+		WHERE id = ? AND verification_token = ? AND is_verified = FALSE;
+	`
+
+	var verifiedUserId models.User
+	err := db.DB.QueryRowContext(ctx, query, userId, token).Scan(&verifiedUserId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("invalid token or user already verified")
+		}
+		return fmt.Errorf("failed to verify user: %w", err)
+	}
+
+	return nil
 }
