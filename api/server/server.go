@@ -45,6 +45,7 @@ func AddRoutes(s *Server) {
 	protectedServer.Use(middleware.AuthMiddleware())
 	{
 		protectedServer.POST("/logout", handlers.HandleLogoutUser(s.Str))
+		protectedServer.GET("/user", handlers.HandleGetUserdata(s.Str))
 	}
 }
 

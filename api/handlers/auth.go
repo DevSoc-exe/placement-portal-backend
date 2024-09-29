@@ -151,6 +151,25 @@ func Register(s models.Store) gin.HandlerFunc {
 	}
 }
 
+func HandleGetUserdata(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		email, exists := c.Get("email")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Email not found in context"})
+			return
+		}
+		fmt.Println(email)
+
+		user, err := s.GetUserByEmail(email.(string))
+		if err != nil || user == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": user, "success": true})
+	}
+}
+
 type VerifyRequestBody struct {
 	Token string `json:"token" binding:"required"`
 }
