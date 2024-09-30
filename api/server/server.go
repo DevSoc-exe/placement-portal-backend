@@ -36,15 +36,18 @@ func AddRoutes(s *Server) {
 
 	server.GET("/health", HealthCheck)
 
+	//* Public User APIs
 	server.PUT("/user/verify/:uid", handlers.HandleUserVerification(s.Str))
+
+	//* Auth APIs
+	server.GET("/refresh", middleware.RefreshToken(), handlers.HandleRefreshToken(s.Str))
 	server.POST("/login", handlers.Login(s.Str))
 	server.POST("/signup", handlers.Register(s.Str))
-
+	server.POST("/logout", handlers.HandleLogoutUser(s.Str))
 
 	protectedServer := server.Group("/")
 	protectedServer.Use(middleware.AuthMiddleware())
 	{
-		protectedServer.POST("/logout", handlers.HandleLogoutUser(s.Str))
 		protectedServer.GET("/user", handlers.HandleGetUserdata(s.Str))
 	}
 }

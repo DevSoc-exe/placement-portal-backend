@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/pkg"
 	"github.com/dgrijalva/jwt-go"
@@ -75,6 +76,61 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		c.Set("userID", claims["userID"])
 		c.Set("email", claims["email"])
+		c.Next()
+	}
+}
+
+func RefreshToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Extract refresh token from request header
+		refreshToken, err := c.Cookie("refresh_token")
+		if err != nil || refreshToken == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Refresh token missing"})
+			c.Abort()
+			return
+		}
+
+		// Validate refresh token
+		token, err := pkg.ValidateJWT(refreshToken)
+		if err != nil {
+			if err.Error() == "Token is expired" {
+				c.SetCookie("auth_token", "", -1, "/", "localhost", false, true)
+				c.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
+
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
+				c.Abort()
+				return
+			}
+
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+			c.Abort()
+			return
+		}
+
+		// Set user information in context
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+			c.Abort()
+			return
+		}
+
+		expirationTime := time.Unix(int64(claims["exp"].(float64)), 0)
+		currentTime := time.Now().Local()
+
+		if currentTime.After(expirationTime) {
+			// return true
+			c.SetCookie("auth_token", "", -1, "/", "localhost", false, true)
+			c.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
+
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
+			c.Abort()
+			return
+		}
+
+		c.Set("refresh_token", refreshToken)
+		c.Set("userID", claims["userID"])
+		c.Set("issuedAt", claims["issuedAt"])
 		c.Next()
 	}
 }

@@ -20,6 +20,7 @@ func CreateAccessToken(user *models.User, csrf string) (string, error) {
 		"userID":   user.ID,
 		"email":    user.Email,
 		"issuedAt": time.Now().Local().Unix(),
+		"role":     user.Role,
 		"csrf":     csrf,
 	}
 
@@ -37,6 +38,7 @@ func CreateRefreshToken(user *models.User) (string, error) {
 		"exp":      time.Now().Local().Add(time.Hour * 24).Unix(), // Set a longer expiration time
 		"userID":   user.ID,
 		"email":    user.Email,
+		"role":     user.Role,
 		"issuedAt": time.Now().Local().Unix(),
 	}
 
