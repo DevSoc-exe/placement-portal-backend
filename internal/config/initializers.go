@@ -53,6 +53,11 @@ func InitJWT() error {
 }
 
 func CreateKeys() error {
+	if err := os.MkdirAll("./internal/keys", os.ModePerm); err != nil {
+        log.Fatal(err)
+		return err
+    }
+
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		log.Fatal(err)
