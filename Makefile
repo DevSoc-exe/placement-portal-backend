@@ -13,9 +13,10 @@ clean:
 
 rebuild: clean build run
 
-deploy:
+production_build:
 	@mkdir -p $(BINARY_DIR)
 	@go build -tags netgo -ldflags '-s -w' -o $(BINARY_DIR)/$(BINARY_NAME) cmd/main.go
 	@echo "Deployed $(BINARY_NAME) successfully"
-	@./$(BINARY_DIR)/$(BINARY_NAME)
 
+deploy: production_build
+	@./$(BINARY_DIR)/$(BINARY_NAME)
