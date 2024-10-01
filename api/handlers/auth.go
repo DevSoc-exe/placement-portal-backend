@@ -71,6 +71,8 @@ func Login(s models.Store) gin.HandlerFunc {
 		if domain == "" {
 			secure = false
 			domain = "localhost"
+		} else {
+			domain =".classikh.me"
 		}
 
 		c.SetCookie("auth_token", accessToken, 3600*24, "/", domain, secure, true)
@@ -209,6 +211,8 @@ func HandleLogoutUser(s models.Store) gin.HandlerFunc {
 		if domain == "" {
 			secure = false
 			domain = "localhost"
+		} else {
+			domain = ".classikh.me"
 		}
 
 		c.SetCookie("auth_token", "", -1, "/", domain, secure, true)
@@ -249,6 +253,8 @@ func HandleRefreshToken(s models.Store) gin.HandlerFunc {
 		if domain == "" {
 			secure = false
 			domain = "localhost"
+		} else {
+			domain = ".classikh.me"
 		}
 
 		c.SetCookie("auth_token", accessToken, 3600*24, "/", domain, secure, true)
