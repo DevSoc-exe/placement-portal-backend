@@ -11,7 +11,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-const RefreshTokenValidTime = time.Hour * 72
+const RefreshTokenValidTime = time.Hour * 24
 const AuthTokenValidTime = time.Minute * 15
 
 func CreateAccessToken(user *models.User, csrf string) (string, error) {

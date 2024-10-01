@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -32,7 +33,6 @@ func CORSMiddleware(c *gin.Context) {
 	}
 }
 
-
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method == "OPTIONS" {
@@ -42,6 +42,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString, err := c.Cookie("auth_token")
 		if err != nil || tokenString == "" {
+			fmt.Println("NO AUTH COOKIE", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token missing"})
 			c.Abort()
 			return
@@ -56,6 +57,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			}
 
 			if err == jwt.ErrSignatureInvalid {
+				fmt.Println("JWT VALIDATION ERR")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 				c.Abort()
 				return
@@ -69,6 +71,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Set user information in context
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok || !token.Valid {
+			fmt.Println("CANNOT EXTRACT TOKEN")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
