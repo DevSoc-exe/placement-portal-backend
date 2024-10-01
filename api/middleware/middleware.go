@@ -15,7 +15,7 @@ func CORSMiddleware(c *gin.Context) {
 	env := os.Getenv("ENVIRONMENT")
 
 	if env == "PRODUCTION" {
-		origin = "https://youtubescholar.classikh.me"
+		origin = "https://tpc-portal.classikh.me"
 	} else {
 		origin = "http://localhost:3000"
 	}
