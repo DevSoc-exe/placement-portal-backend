@@ -58,7 +58,8 @@ func Login(s models.Store) gin.HandlerFunc {
 		}
 
 		if err := s.UpdateUserRefreshToken(refreshToken, user.ID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save refresh token"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save refresh token",
+				"message": err.Error()})
 			return
 		}
 

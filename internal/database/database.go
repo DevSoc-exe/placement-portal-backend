@@ -35,6 +35,7 @@ func ConnectToDB(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
+
 func (s *Database) InitDB() error {
 	err := s.createUserTable()
 	if err != nil {
@@ -56,9 +57,9 @@ func (s *Database) createUserTable() error {
     is_verified BOOLEAN NOT NULL DEFAULT FALSE,
     verification_token VARCHAR(255),
     student_type ENUM('Regular', 'PU MEET', 'LEET') NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    refresh_token VARCHAR(255),
+    refresh_token TEXT,
     role ENUM('STUDENT', 'ADMIN', 'MODERATOR') NOT NULL DEFAULT 'STUDENT'
 );
 `
@@ -131,23 +132,28 @@ func (db *Database) RevokeUserRefreshToken(id string) error {
 
 	return err
 }
-
-func (db *Database) UpdateUserRefreshToken(refresh_token, userId string) error {
+func (db *Database) UpdateUserRefreshToken(refreshToken, userId string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
 	query := `
 		UPDATE users
-		SET refresh_token = ?,
+		SET refresh_token = ?
 		WHERE id = ?;
 	`
-	var verifiedUserId models.User
-	err := db.DB.QueryRowContext(ctx, query, refresh_token, userId).Scan(&verifiedUserId)
+
+	result, err := db.DB.ExecContext(ctx, query, refreshToken, userId)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("Some Error Occured!")
-		}
-		return fmt.Errorf("failed to verify user: %w", err)
+		return fmt.Errorf("failed to update token: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no user found for the id")
 	}
 
 	return nil
@@ -163,13 +169,18 @@ func (db *Database) VerifyUser(userId, token string) error {
 		WHERE id = ? AND verification_token = ? AND is_verified = FALSE;
 	`
 
-	var verifiedUserId models.User
-	err := db.DB.QueryRowContext(ctx, query, userId, token).Scan(&verifiedUserId)
+	result, err := db.DB.ExecContext(ctx, query, userId, token)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("invalid token or user already verified")
-		}
 		return fmt.Errorf("failed to verify user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("invalid token or user already verified")
 	}
 
 	return nil
