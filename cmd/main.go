@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-
 	"github.com/DevSoc-exe/placement-portal-backend/api/server"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/config"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/database"
