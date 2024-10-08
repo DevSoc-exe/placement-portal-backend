@@ -9,6 +9,7 @@
 │       └── server.go
 ├── bin
 │   └── main
+├── ca.pem
 ├── cmd
 │   └── main.go
 ├── dirstructure.txt
@@ -24,9 +25,14 @@
 │   │   ├── csrf-pub.pem
 │   │   └── csrf.pem
 │   ├── models
+│   │   ├── serverModel.go
 │   │   └── usermodel.go
 │   └── pkg
-│       └── token.go
-└── scripts
+│       ├── email.go
+│       ├── token.go
+│       ├── validate.go
+│       └── validate_test.go
+├── scripts
+└── tpc-portal.pem
 
-14 directories, 16 files
+14 directories, 22 files

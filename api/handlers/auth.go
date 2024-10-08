@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -13,26 +12,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
-type RegisterRequest struct {
-	Name            string `json:"name" binding:"required"`
-	Email           string `json:"email" binding:"required"`
-	Password        string `json:"password" binding:"required"`
-	RollNum         string `json:"rollnum" binding:"required"`
-	YearOfAdmission int    `json:"year_of_admission" binding:"required"`
-}
-
-type LoginResponse struct {
-	Email string `json:"email"`
-}
-
 func Login(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req LoginRequest
+		var req models.LoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
@@ -44,7 +26,11 @@ func Login(s models.Store) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
 			return
 		}
-		log.Println(user)
+
+		if !user.IsVerified {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not Verified"})
+			return
+		}
 
 		// Compare the provided password with the stored hashed password
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
@@ -71,12 +57,11 @@ func Login(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		// // Update auth with the new refresh token
-		// auth.RefreshToken = refreshToken
-		// if err := h.store.UpdateUserRefreshToken(refreshToken, auth.ID); err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save refresh token"})
-		// 	return
-		// }
+		if err := s.UpdateUserRefreshToken(refreshToken, user.ID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save refresh token",
+				"message": err.Error()})
+			return
+		}
 
 		c.Set("csrf_token", csrfToken)
 		c.Header("X-Csrf-Token", csrfToken)
@@ -86,12 +71,14 @@ func Login(s models.Store) gin.HandlerFunc {
 		if domain == "" {
 			secure = false
 			domain = "localhost"
+		} else {
+			domain =".classikh.me"
 		}
 
 		c.SetCookie("auth_token", accessToken, 3600*24, "/", domain, secure, true)
 		c.SetCookie("refresh_token", refreshToken, 3600*24, "/", domain, secure, true)
 
-		resp := LoginResponse{
+		resp := models.LoginResponse{
 			Email: user.Email,
 		}
 
@@ -101,8 +88,15 @@ func Login(s models.Store) gin.HandlerFunc {
 
 func Register(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var auth RegisterRequest
+		var auth models.RegisterRequest
 		if err := c.ShouldBindJSON(&auth); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Validate data
+		err := pkg.ValidateRegisterData(auth)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -113,17 +107,82 @@ func Register(s models.Store) gin.HandlerFunc {
 			return
 		}
 
+		csrfToken, err := pkg.GenerateCSRFToken()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate CSRF token"})
+			return
+		}
+
+		userId := nanoid.New()
 		newauth := models.User{
-			ID:              nanoid.New(),
-			Email:           auth.Email,
-			Password:        string(hash[:]),
-			Name:            auth.Name,
-			YearOfAdmission: auth.YearOfAdmission,
-			RollNumber:      auth.RollNum,
+			ID:                userId,
+			Email:             auth.Email,
+			Password:          string(hash[:]),
+			Name:              auth.Name,
+			YearOfAdmission:   auth.YearOfAdmission,
+			RollNumber:        auth.RollNum,
+			Branch:            auth.Branch,
+			StudentType:       auth.StudentType,
+			VerificationToken: &csrfToken,
+			Role:              "STUDENT",
 		}
 
 		if err := s.CreateUser(&newauth); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		emailBody := pkg.CreateMailMessageWithVerificationToken(csrfToken, userId)
+		pkg.SendVerificationEmail(auth.Email, emailBody)
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+	}
+}
+
+func HandleGetUserdata(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		email, exists := c.Get("email")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Email not found in context"})
+			return
+		}
+		fmt.Println(email)
+
+		user, err := s.GetUserByEmail(email.(string))
+		if err != nil || user == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": user, "success": true})
+	}
+}
+
+type VerifyRequestBody struct {
+	Token string `json:"token" binding:"required"`
+}
+
+func HandleUserVerification(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uid := c.Param("uid")
+		if uid == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})
+			return
+		}
+
+		var token VerifyRequestBody
+		if err := c.ShouldBindJSON(&token); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		err := s.VerifyUser(uid, token.Token)
+		fmt.Println(err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to Verify User Token!",
+				"error": err})
 			return
 		}
 
@@ -134,37 +193,72 @@ func Register(s models.Store) gin.HandlerFunc {
 }
 
 func HandleLogoutUser(s models.Store) gin.HandlerFunc {
-	return func (c *gin.Context) {
-		authID, exists := c.Get("userID")
-		if !exists {
+	return func(c *gin.Context) {
+		id := c.GetString("userID")
+		if id == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})
 			return
 		}
 
-		fmt.Println(authID)
-
-		// var id int
-		// if floatID, ok := authID.(float64); ok {
-		// 	id = int(floatID)
-		// } else {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "auth_id is not a valid number"})
-		// 	return
-		// }
-
-		// err := h.store.RevokeUserRefreshToken(id)
-		// if err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Some error occured"})
-		// 	return
-		// }
+		err := s.RevokeUserRefreshToken(id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Some error occured"})
+			return
+		}
 
 		domain := os.Getenv("DOMAIN")
 		secure := true
 		if domain == "" {
 			secure = false
 			domain = "localhost"
+		} else {
+			domain = ".classikh.me"
 		}
 
 		c.SetCookie("auth_token", "", -1, "/", domain, secure, true)
 		c.SetCookie("refresh_token", "", -1, "/", domain, secure, true)
+	}
+}
+
+func HandleRefreshToken(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Retrieve auth by ID
+		refreshToken := c.GetString("refresh_token")
+		id := c.GetString("userID")
+		if id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})
+			return
+		}
+
+		auth, err := s.GetUserByID(id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		if auth.RefreshToken != refreshToken {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "refresh token did not match"})
+			return
+		}
+
+		// Generate a new access token
+		accessToken, err := pkg.CreateAccessToken(auth, "")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create access token"})
+			return
+		}
+
+		domain := os.Getenv("DOMAIN")
+		secure := true
+		if domain == "" {
+			secure = false
+			domain = "localhost"
+		} else {
+			domain = ".classikh.me"
+		}
+
+		c.SetCookie("auth_token", accessToken, 3600*24, "/", domain, secure, true)
+
+		c.JSON(http.StatusOK, gin.H{"accessToken": accessToken})
 	}
 }
