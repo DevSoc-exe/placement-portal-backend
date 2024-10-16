@@ -42,6 +42,7 @@ func AddRoutes(s *Server) {
 	//* Auth APIs
 	server.GET("/refresh", middleware.RefreshToken(), handlers.HandleRefreshToken(s.Str))
 	server.POST("/login", handlers.Login(s.Str))
+	server.GET("/otp", handlers.HandleGetOTP(s.Str))
 	server.POST("/signup", handlers.Register(s.Str))
 	server.POST("/logout", handlers.HandleLogoutUser(s.Str))
 
