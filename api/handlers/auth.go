@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,10 +10,9 @@ import (
 	"github.com/DevSoc-exe/placement-portal-backend/internal/pkg"
 	"github.com/aidarkhanov/nanoid"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func Login(s models.Store) gin.HandlerFunc {
+func HandleGetOTP(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.LoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -23,7 +23,7 @@ func Login(s models.Store) gin.HandlerFunc {
 		// auth, err := h.store.GetUserByEmail(req.Email)
 		user, err := s.GetUserByEmail(req.Email)
 		if err != nil || user == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err.Error()})
 			return
 		}
 
@@ -32,11 +32,70 @@ func Login(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		// Compare the provided password with the stored hashed password
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Username or password"})
+		otp, otpString, err := pkg.CreateOtpJwt()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		err = s.SaveOTP(otpString, user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Save User Token in Database.", "message": err.Error()})
+			return
+		}
+
+		mail := pkg.CreateOTPEmail(otp, user.Name, user.Email)
+		err = mail.SendEmail()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send OTP Email."})
+		}
+
+		c.JSON(http.StatusOK, gin.H{})
+	}
+}
+
+func Login(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.OTPRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		user, err := s.GetUserByEmail(req.Email)
+		if err != nil || user == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err.Error()})
+			return
+		}
+
+		if !user.IsVerified {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not Verified"})
+			return
+		}
+
+		token := user.Otp
+		otp, err := pkg.CheckOTPToken(token.String)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		if otp != req.OTP {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OTP"})
+			return
+		}
+
+		// if err := bcrypt.CompareHashAndPassword([]byte(user.Otp), []byte(string(req.OTP))); err != nil {
+		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OTP"})
+		// 	return
+		// }
+
+		err = s.ClearOTP(user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear OTP"})
+		}
+
+		// otp, err := pkg.CheckOTPToken(token)
 
 		csrfToken, err := pkg.GenerateCSRFToken()
 		if err != nil {
@@ -72,7 +131,7 @@ func Login(s models.Store) gin.HandlerFunc {
 			secure = false
 			domain = "localhost"
 		} else {
-			domain =".classikh.me"
+			domain = ".classikh.me"
 		}
 
 		c.SetCookie("auth_token", accessToken, 3600*24, "/", domain, secure, true)
@@ -101,29 +160,32 @@ func Register(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		hash, err := bcrypt.GenerateFromPassword([]byte(auth.Password), bcrypt.DefaultCost)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
+		//! No need to create a password due to OTP Login
+		// hash, err := bcrypt.GenerateFromPassword([]byte(auth.Password), bcrypt.DefaultCost)
+		// if err != nil {
+		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// 	return
+		// }
 
 		csrfToken, err := pkg.GenerateCSRFToken()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate CSRF token"})
 			return
 		}
+		verification_token := sql.NullString{
+			String: csrfToken,
+		}
 
 		userId := nanoid.New()
 		newauth := models.User{
 			ID:                userId,
 			Email:             auth.Email,
-			Password:          string(hash[:]),
 			Name:              auth.Name,
 			YearOfAdmission:   auth.YearOfAdmission,
+			VerificationToken:  verification_token,
 			RollNumber:        auth.RollNum,
 			Branch:            auth.Branch,
 			StudentType:       auth.StudentType,
-			VerificationToken: &csrfToken,
 			Role:              "STUDENT",
 		}
 
@@ -132,8 +194,8 @@ func Register(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		emailBody := pkg.CreateMailMessageWithVerificationToken(csrfToken, userId)
-		pkg.SendVerificationEmail(auth.Email, emailBody)
+		mail := pkg.CreateMailMessageWithVerificationToken(csrfToken, userId, newauth.Email)
+		err = mail.SendEmail()
 
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
@@ -179,10 +241,9 @@ func HandleUserVerification(s models.Store) gin.HandlerFunc {
 		}
 
 		err := s.VerifyUser(uid, token.Token)
-		fmt.Println(err)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to Verify User Token!",
-				"error": err})
+				"error": err.Error()})
 			return
 		}
 

@@ -75,7 +75,7 @@ func ValidateJWT(tokenString string) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsTokenExpired(tokenString string) bool {
+func IsTokenExpired(tokenString string) (bool) {
 	token, err := ValidateJWT(tokenString)
 	if err != nil {
 		return false
