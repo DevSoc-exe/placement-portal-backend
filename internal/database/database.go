@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
-	_ "github.com/go-sql-driver/mysql"
+	// "github.com/go-sql-driver/mysql"
 )
 
 type Database struct {
@@ -34,7 +34,6 @@ func ConnectToDB(dsn string) (*sql.DB, error) {
 
 	return db, nil
 }
-
 
 func (s *Database) InitDB() error {
 	err := s.createUserTable()
@@ -63,7 +62,24 @@ func (s *Database) createUserTable() error {
     role ENUM('STUDENT', 'ADMIN', 'MODERATOR') NOT NULL DEFAULT 'STUDENT'
 );
 `
+	_, err := s.DB.Exec(query)
+	return err
+}
 
+func (s *Database) createJobsTable() error {
+	query := `CREATE TABLE IF NOT EXISTS jobs (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    drive_date DATE NOT NULL,
+	drive_duration INT NOT NULL,
+	location VARCHAR(255)
+	overview LONGTEXT NOT NULL,
+	key_responsibilities LONGTEXT NOT NULL,
+	qualifications LONGTEXT NOT NULL,
+	points_to_note LONGTEXT NOT NULL,
+	job_description LONGBLOB,
+);
+`
 	_, err := s.DB.Exec(query)
 	return err
 }

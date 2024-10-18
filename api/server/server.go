@@ -45,6 +45,9 @@ func AddRoutes(s *Server) {
 	server.POST("/signup", handlers.Register(s.Str))
 	server.POST("/logout", handlers.HandleLogoutUser(s.Str))
 
+	//* Job Posting API
+	// server.POST("/jobs/addNewPost", handlers.CreateJobPosting())
+
 	protectedServer := server.Group("/")
 	protectedServer.Use(middleware.AuthMiddleware())
 	{
