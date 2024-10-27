@@ -1,6 +1,8 @@
 package server
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -22,6 +24,10 @@ func CreateServer(server *gin.Engine, str models.Store) *Server {
 	}
 }
 
+type Database struct {
+	DB *sql.DB
+}
+
 func (server *Server) StartServer() {
 	server.Srv.Use(middleware.CORSMiddleware)
 	AddRoutes(server)
@@ -29,6 +35,7 @@ func (server *Server) StartServer() {
 	if err := server.Srv.Run(":8080"); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("listen: %s\n", err)
 	}
+	fmt.Println("Started server on port 8080.")
 }
 
 func AddRoutes(s *Server) {
@@ -45,6 +52,11 @@ func AddRoutes(s *Server) {
 	server.GET("/otp", handlers.HandleGetOTP(s.Str))
 	server.POST("/signup", handlers.Register(s.Str))
 	server.POST("/logout", handlers.HandleLogoutUser(s.Str))
+
+	//* Job Posting API
+	server.GET("/jobs/getDrive", handlers.HandleGetDriveUsingID(s.Str))
+	server.DELETE("/jobs/delDrive", handlers.HandleDeleteDrive(s.Str))
+	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
 
 	protectedServer := server.Group("/")
 	protectedServer.Use(middleware.AuthMiddleware())
