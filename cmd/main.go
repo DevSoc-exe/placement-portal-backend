@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+
 	"github.com/DevSoc-exe/placement-portal-backend/api/server"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/config"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/database"
 	"github.com/gin-gonic/gin"
 )
+
 func init() {
 	config.InitEnv()
 
@@ -17,13 +20,15 @@ func init() {
 		config.CreateKeys()
 	}
 	config.InitJWT()
+
 }
 
 func main() {
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-
+	fmt.Println("in to server")
 	dsn := os.Getenv("DB_CONN")
-	if(dsn == "") {
+	if dsn == "" {
 		panic("database connection string not found")
 	}
 

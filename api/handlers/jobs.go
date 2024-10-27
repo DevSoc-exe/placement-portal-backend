@@ -1,16 +1,9 @@
 package handlers
 
 import (
-	"context"
-	// "fmt"
+	"database/sql"
+	"fmt"
 	"net/http"
-	"strings"
-
-	// "fmt"
-	// "net/http"
-	// "database/sql"
-	// "os"
-	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/responses"
@@ -21,82 +14,131 @@ import (
 	// "golang.org/x/crypto/bcrypt"
 )
 
-func (db *Database) CreateJobPosting(c *gin.Context) error {
-	// user_id, exists := c.Get("user_id")
-	// if !exists {
-	// 	c.AbortWithStatus(http.StatusUnauthorized)
-	// 	return
-	// }
+func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// user_id, exists := c.Get("user_id")
+		// if !exists {cc
+		// 	c.AbortWithStatus(http.StatusUnauthorized)
+		// 	return
+		// }
 
-	var body struct {
-		DriveID          string
-		CompanyID        string
-		DateOfDrive      time.Time
-		DriveDuration    int
-		Roles            []models.Role
-		Location         string
-		Responsibilities string
-		Qualifications   string
-		PointsToNote     string
-		JobDescription   []byte
+		respError := responses.ApiResponse{
+			Success: false,
+			Message: "",
+			Data:    nil,
+		}
+
+		var driveBody models.DriveBody
+
+		err := c.BindJSON(&driveBody)
+		if err != nil {
+			respError.Message = string(responses.BindError)
+			respError.MapApiResponse(c, http.StatusBadRequest)
+			return
+		}
+
+		fmt.Println(driveBody)
+		err = s.CreateNewDriveUsingObject(driveBody)
+
+		if err != nil {
+			respError.Message = string(err.Error())
+			respError.MapApiResponse(c, http.StatusInternalServerError)
+			return
+		}
+
+		respSuccess := responses.ApiResponse{
+			Success: true,
+			Message: string(responses.DriveCreated),
+			Data:    nil,
+		}
+		respSuccess.MapApiResponse(c, http.StatusCreated)
+		return
 	}
+}
 
-	err := c.BindJSON(&body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": responses.IvalidJobPosting,
-		})
-		return err
+func HandleGetDriveUsingID(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fmt.Print("Inside Backend!")
+		var body struct {
+			DriveID string
+		}
+
+		respError := responses.ApiResponse{
+			Success: false,
+			Message: "",
+			Data:    nil,
+		}
+
+		if err := c.Bind(&body); err != nil {
+			respError.Message = string(responses.BindError)
+			respError.MapApiResponse(c, http.StatusBadRequest)
+		}
+
+		data, err := s.GetJobPostingUsingDriveID(body.DriveID)
+
+		fmt.Println(err)
+		if err == sql.ErrNoRows {
+			respError.Message = string(responses.DatabaseError)
+			respError.MapApiResponse(c, http.StatusInternalServerError)
+		}
+
+		respSuccess := responses.ApiResponse{
+			Success: true,
+			Message: string(responses.DriveFound),
+			Data:    data,
+		}
+		respSuccess.MapApiResponse(c, http.StatusFound)
 	}
+}
 
-	// current_time := time.Now().UTC()
+func HandleDeleteDrive(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
+		// user_id, exists := c.Get("user_id")
+		// if !exists {
+		// 	c.AbortWithStatus(http.StatusUnauthorized)
+		// 	return
+		// }
 
-	queryToInsertRoles := `
-	INSERT INTO roles (id, drive_id, title, stipend_low, stipend_high, salary_low, salary_high, created_at, updated_at)
-	VALUES
-	`
+		var body struct {
+			DriveID string
+		}
 
-	var valueStrings []string
-	var valueArgs []interface{}
+		respError := responses.ApiResponse{
+			Success: false,
+			Message: string(responses.DriveNotFound),
+			Data:    nil,
+		}
 
-	for _, role := range body.Roles {
-		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, NOW(), NOW())")
-		valueArgs = append(valueArgs, role.ID, role.DriveID, role.Title, role.StipendLow, role.StipendHigh, role.SalaryLow, role.SalaryHigh)
+		if err := c.Bind(&body); err != nil {
+			respError.MapApiResponse(c, http.StatusBadRequest)
+			return
+
+		}
+		driveToDelete := body.DriveID
+		fmt.Println(driveToDelete)
+
+		data, err := s.GetJobPostingUsingDriveID(driveToDelete)
+
+		if err != nil {
+			respError.Message = err.Error()
+			respError.MapApiResponse(c, http.StatusNotFound)
+			return
+		}
+
+		err = s.DeleteJobUsingDriveID(driveToDelete)
+		if err != nil {
+			respError.Message = err.Error()
+			respError.MapApiResponse(c, http.StatusNotFound)
+			return
+
+		}
+		respSuccess := responses.ApiResponse{
+			Success: true,
+			Message: string(responses.DriveFound),
+			Data:    data,
+		}
+		respSuccess.MapApiResponse(c, http.StatusFound)
+		return
 	}
-
-	queryToInsertRoles += strings.Join(valueStrings, ", ")
-
-	_, err = db.DB.ExecContext(ctx, queryToInsertRoles, valueArgs...)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": string(responses.RolesInsertionFail) + err.Error(),
-		})
-		return err
-	}
-
-	queryToInsertDrive := `
-    INSERT INTO drive (id, company_id, drive_date, drive_duration, location, key_responsibilities, qualifications, points_to_note,job_description, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
-    `
-
-	_, err = db.DB.ExecContext(ctx, queryToInsertDrive, body.DriveID, body.CompanyID, body.DateOfDrive, body.DriveDuration, body.Location, body.Responsibilities, body.Qualifications, body.PointsToNote, body.JobDescription)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": string(responses.JobPostingFailed) + err.Error(),
-		})
-		return err
-	}
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

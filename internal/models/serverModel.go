@@ -10,4 +10,10 @@ type Store interface {
 
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id string) (*User, error)
+
+	DeleteJobUsingDriveID(driveID string) error
+	GetJobPostingUsingDriveID(driveID string) (interface{}, error)
+	CreateNewDriveUsingObject(driveData DriveBody) error
+
+	GetRolesUsingDriveID(driveID string) ([]Role, error)
 }

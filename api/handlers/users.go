@@ -29,7 +29,7 @@ func (db *Database) CreateUser(user *models.User) error {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
     `
 
-	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.Password, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken, user.Role)
+	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.Otp, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken, user.Role)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (db *Database) GetUserByEmail(email string) (*models.User, error) {
 	row := db.DB.QueryRowContext(ctx, query, email)
 
 	var user models.User
-	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken, &user.Role)
+	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Otp, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken, &user.Role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no user found with email: %s", email)
@@ -63,7 +63,7 @@ func (db *Database) GetUserByID(id string) (*models.User, error) {
 	row := db.DB.QueryRowContext(ctx, query, id)
 
 	var user models.User
-	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken, &user.Role)
+	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Otp, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken, &user.Role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no user found with email: %s", id)
