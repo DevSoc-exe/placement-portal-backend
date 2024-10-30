@@ -55,13 +55,20 @@ func AddRoutes(s *Server) {
 
 	//* Job Posting API
 	server.GET("/jobs/getDrive", handlers.HandleGetDriveUsingID(s.Str))
-	server.DELETE("/jobs/delDrive", handlers.HandleDeleteDrive(s.Str))
-	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
 
-	protectedServer := server.Group("/")
-	protectedServer.Use(middleware.AuthMiddleware())
+	//* Admin APIs
+	adminServer := server.Group("/")
+	adminServer.Use(middleware.AuthMiddleware(), middleware.CheckAdmin())
 	{
-		protectedServer.GET("/user", handlers.HandleGetUserdata(s.Str))
+		adminServer.DELETE("/jobs/delDrive", handlers.HandleDeleteDrive(s.Str))
+		adminServer.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
+	}
+
+	//* User APIs
+	userServer := server.Group("/")
+	userServer.Use(middleware.AuthMiddleware())
+	{
+		userServer.GET("/user", handlers.HandleGetUserdata(s.Str))
 	}
 }
 

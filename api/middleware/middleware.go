@@ -78,7 +78,19 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims["userID"])
-		c.Set("email", claims["email"])
+		c.Set("role", claims["role"])
+		c.Next()
+	}
+}
+
+func CheckAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, _ := c.Get("role")
+		if role != "ADMIN" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized access"})
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }
