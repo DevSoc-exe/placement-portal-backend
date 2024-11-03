@@ -62,6 +62,10 @@ func AddRoutes(s *Server) {
 	{
 		adminServer.DELETE("/jobs/delDrive", handlers.HandleDeleteDrive(s.Str))
 		adminServer.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
+
+		//* Student Data APIs for admin
+		adminServer.GET("/admin/user/data", handlers.HandleGetAllStudentData(s.Str))
+		adminServer.GET("/admin/user/data/:id", handlers.HandleGetStudentDataByID(s.Str))
 	}
 
 	//* User APIs
@@ -69,6 +73,12 @@ func AddRoutes(s *Server) {
 	userServer.Use(middleware.AuthMiddleware())
 	{
 		userServer.GET("/user", handlers.HandleGetUserdata(s.Str))
+
+		//* Student Data APIs for user
+		userServer.POST("/user/data", handlers.HandleAddNewStudentData(s.Str))
+		userServer.GET("/user/data", handlers.HandleGetStudentData(s.Str))
+		userServer.DELETE("/user/data", handlers.HandleDeleteStudentData(s.Str))
+		userServer.PUT("/user/data", handlers.HandleUpdateStudentData(s.Str))
 	}
 }
 

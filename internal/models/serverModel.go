@@ -16,4 +16,10 @@ type Store interface {
 	CreateNewDriveUsingObject(driveData DriveBody) error
 
 	GetRolesUsingDriveID(driveID string) ([]Role, error)
+
+	AddStudentData(user *StudentData) error
+	GetStudentDataByID(id string) (*StudentData, error)
+	UpdateStudentData(user *StudentData) error
+	DeleteStudentData(id string) error
+	GetAllStudentData(pageOffset ...string) ([]*StudentData, error)
 }

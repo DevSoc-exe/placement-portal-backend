@@ -25,7 +25,8 @@ func (s *Database) createUserTable() error {
     created_at DATETIME,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     refresh_token TEXT,
-    role ENUM('STUDENT', 'ADMIN', 'MODERATOR') NOT NULL DEFAULT 'STUDENT'
+    role ENUM('STUDENT', 'ADMIN', 'MODERATOR') NOT NULL DEFAULT 'STUDENT',
+	isOnboarded BOOLEAN NOT NULL DEFAULT FALSE
 );
 `
 	_, err := s.DB.Exec(query)
@@ -84,17 +85,32 @@ func (db *Database) GetUserByID(id string) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `SELECT id, name, email, otp, otp_expiry, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role FROM users WHERE id = ?;`
+	query := `SELECT id, name, email, otp, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, refresh_token FROM users WHERE id = ?;`
 	row := db.DB.QueryRowContext(ctx, query, id)
 
 	var user models.User
-	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Otp, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken, &user.Role)
+	err := row.Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Otp,
+		&user.RollNumber,
+		&user.YearOfAdmission,
+		&user.Branch,
+		&user.StudentType,
+		&user.IsVerified,
+		&user.VerificationToken,
+		&user.Role,
+		&user.RefreshToken,
+	)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no user found with id: %s", id)
 		}
 		return nil, err
 	}
+
 	return &user, nil
 }
 
@@ -107,6 +123,7 @@ func (db *Database) RevokeUserRefreshToken(id string) error {
 
 	return err
 }
+
 func (db *Database) UpdateUserRefreshToken(refreshToken, userId string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
