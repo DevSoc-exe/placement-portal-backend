@@ -66,6 +66,7 @@ func AddRoutes(s *Server) {
 		//* Student Data APIs for admin
 		adminServer.GET("/admin/user/data", handlers.HandleGetAllStudentData(s.Str))
 		adminServer.GET("/admin/user/data/:id", handlers.HandleGetStudentDataByID(s.Str))
+		adminServer.GET("/admin/user", handlers.HandleGetAllStudents(s.Str))
 	}
 
 	//* User APIs

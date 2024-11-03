@@ -10,6 +10,7 @@ type Store interface {
 
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id string) (*User, error)
+	GetAllStudents(pageOffset ...string) ([]*User, error)
 
 	DeleteJobUsingDriveID(driveID string) error
 	GetJobPostingUsingDriveID(driveID string) (interface{}, error)

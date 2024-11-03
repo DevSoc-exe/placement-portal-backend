@@ -36,6 +36,11 @@ func ValidateRegisterData(data models.RegisterRequest) error {
 		return fmt.Errorf("Student Type Mismatch")
 	}
 
+	gender := data.Gender
+	if gender != "MALE" && gender != "FEMALE" && gender != "OTHERS" {
+		return fmt.Errorf("Invalid Gender")
+	}
+
 	year := 2000 + (int(rollNum[2]-'0') * 10) + int(rollNum[3]-'0')
 	if year != data.YearOfAdmission {
 		return fmt.Errorf("Year of Admission Mismatch")
