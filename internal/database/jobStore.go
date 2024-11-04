@@ -8,10 +8,7 @@ import (
 	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
-	_ "github.com/DevSoc-exe/placement-portal-backend/internal/models"
-	_ "github.com/DevSoc-exe/placement-portal-backend/internal/responses"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/google/uuid"
+	"github.com/aidarkhanov/nanoid"
 )
 
 func (db *Database) createJobsTable() error {
@@ -19,6 +16,7 @@ func (db *Database) createJobsTable() error {
 	companyTableQuery := `CREATE TABLE IF NOT EXISTS company (
 		company_id VARCHAR(36) PRIMARY KEY NOT NULL,
 		name VARCHAR(255) NOT NULL,
+		hr_name VARCHAR(255) NOT NULL,
 		overview LONGTEXT NOT NULL,
 		contact_email VARCHAR(255) NOT NULL,
 		contact_number VARCHAR(20),
@@ -72,6 +70,11 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
+	tx, err := db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
 	queryToInsertDrive := `
 	INSERT INTO drive (id, company_id, drive_date, drive_duration, location, key_responsibilities, qualifications, points_to_note, job_description)
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -79,9 +82,10 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 
 	fmt.Println(driveData.CompanyID)
 	date, err := time.Parse("2006-01-02", driveData.DateOfDrive)
-	_, err = db.DB.ExecContext(ctx, queryToInsertDrive, driveData.ID, driveData.CompanyID, date, driveData.DriveDuration, driveData.Location, driveData.Responsibilities, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription)
+	_, err = tx.ExecContext(ctx, queryToInsertDrive, driveData.ID, driveData.CompanyID, date, driveData.DriveDuration, driveData.Location, driveData.Responsibilities, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription)
 	if err != nil {
 		fmt.Println("error was here!")
+		tx.Rollback()
 		return err
 	}
 
@@ -93,17 +97,22 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 	var valueArgs []interface{}
 
 	for _, role := range driveData.Roles {
-		roleUUID := uuid.New().String()
+		roleUUID := nanoid.New()
 		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
 		valueArgs = append(valueArgs, roleUUID, role.DriveID, role.Title, role.StipendLow, role.StipendHigh, role.SalaryLow, role.SalaryHigh)
 	}
 
 	queryToInsertRoles += strings.Join(valueStrings, ", ")
 
-	_, err = db.DB.ExecContext(ctx, queryToInsertRoles, valueArgs...)
+	_, err = tx.ExecContext(ctx, queryToInsertRoles, valueArgs...)
 	fmt.Println(queryToInsertRoles)
 	if err != nil {
-		fmt.Println("error was here 2!")
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 
@@ -130,6 +139,22 @@ func (db *Database) DeleteJobUsingDriveID(driveID string) error {
 	return err
 }
 
+func (db *Database) AddNewCompany(company *models.Company) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	query := `INSERT INTO company (company_id, name, hr_name, overview, contact_email, contact_number, linked_in, website) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
+
+	// Generate a new Nano ID for the company
+	id := nanoid.New()
+
+	_, err := db.DB.ExecContext(ctx, query, id, company.Name, company.HRName, company.Overview, company.ContactEmail, company.ContactNumber, company.LinkedIn, company.Website)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *Database) GetJobPostingUsingDriveID(driveID string) (interface{}, error) {
 
 	// user_id, exists := c.Get("user_id")
@@ -142,7 +167,7 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (interface{}, erro
 
 	queryToGetDriveInfo := `
 	SELECT company.company_id, name, overview, contact_email, contact_number, linked_in, website, drive_date, drive_duration, location, key_responsibilities, qualifications, points_to_note, job_description
-	FROM company 
+	FROM company
 	JOIN drive ON company.company_id = drive.company_id
 	WHERE drive.id = ?;
 	`
@@ -194,4 +219,53 @@ func (db *Database) GetRolesUsingDriveID(driveID string) ([]models.Role, error) 
 	}
 
 	return roles, nil
+}
+
+func (db *Database) GetAllCompanies(args ...string) ([]models.Company, error) {
+	companies := make([]models.Company, 0)
+
+	offset := "1"
+	name := ""
+	if len(args) > 0 {
+		offset = args[0]
+		name = args[1]
+	}
+
+	var query string
+	queryArgs := []interface{}{}
+
+	if name != "" {
+		query += "name LIKE ?"
+		queryArgs = append(queryArgs, "%"+name+"%")
+	}
+
+	queryArgs = append(queryArgs, offset)
+
+	if query != "" {
+		query = "SELECT * FROM company WHERE " + query + " LIMIT 10 OFFSET ?;"
+	} else {
+		query = "SELECT * FROM company LIMIT 10 OFFSET ?"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	rows, err := db.DB.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		company := new(models.Company)
+		if err := rows.Scan(&company.CompanyID, &company.Name, &company.HRName, &company.Overview, &company.ContactEmail, &company.ContactNumber, &company.LinkedIn, &company.Website); err != nil {
+			return nil, err
+		}
+		companies = append(companies, *company)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return companies, nil
 }

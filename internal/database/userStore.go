@@ -239,17 +239,19 @@ func (db *Database) VerifyUser(userId, token string) error {
 	return nil
 }
 
-func (db *Database) GetAllStudents(args ...string) ([]*models.User, error) {
+func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
 	offset := "1"
 	gender := ""
 	branch := ""
+	name := ""
 	if len(args) > 0 {
 		offset = args[0]
 		gender = args[1]
 		branch = args[2]
+		name = args[3]
 	}
 
 	var query string
@@ -274,6 +276,15 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.User, error) {
 		query += fmt.Sprintf("branch IN (%s)", branchPlaceholders)
 	}
 
+	// Build branch filter
+	if name != "" {
+		if query != "" {
+			query += " AND "
+		}
+		query += "name LIKE ?"
+		queryArgs = append(queryArgs, "%"+name+"%")
+	}
+
 	queryArgs = append(queryArgs, offset)
 
 	// Base query with filters and pagination
@@ -289,9 +300,9 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.User, error) {
 	}
 	defer rows.Close()
 
-	var studentData []*models.User
+	var studentData []*models.UserResponse
 	for rows.Next() {
-		var data models.User
+		var data models.UserResponse
 		err := rows.Scan(
 			&data.ID,
 			&data.Branch,
