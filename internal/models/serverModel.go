@@ -10,7 +10,7 @@ type Store interface {
 
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id string) (*User, error)
-	GetAllStudents(pageOffset ...string) ([]*User, error)
+	GetAllStudents(args ...string) ([]*User, error)
 
 	DeleteJobUsingDriveID(driveID string) error
 	GetJobPostingUsingDriveID(driveID string) (interface{}, error)
@@ -22,5 +22,5 @@ type Store interface {
 	GetStudentDataByID(id string) (*StudentData, error)
 	UpdateStudentData(user *StudentData) error
 	DeleteStudentData(id string) error
-	GetAllStudentData(pageOffset ...string) ([]*StudentData, error)
+	GetAllStudentData(args ...string) ([]*StudentData, error)
 }

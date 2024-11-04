@@ -133,7 +133,17 @@ func HandleGetAllStudentData(s models.Store) gin.HandlerFunc {
 			page = "1"
 		}
 
-		studentData, err := s.GetAllStudentData(page)
+		gender := c.Query("gender")
+		if gender == "" {
+			gender = "-"
+		}
+
+		branch := c.Query("branch")
+		if branch == "" {
+			branch = "-"
+		}
+
+		studentData, err := s.GetAllStudentData(page, gender, branch)
 		if err != nil {
 			c.JSON(500, gin.H{
 				"error": "Internal server error",

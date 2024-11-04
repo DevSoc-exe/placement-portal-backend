@@ -14,7 +14,10 @@ func HandleGetAllStudents(s models.Store) gin.HandlerFunc {
 			page = "0"
 		}
 
-		students, err := s.GetAllStudents(page)
+		gender := c.Query("gender")
+		branch := c.Query("branch")
+
+		students, err := s.GetAllStudents(page, gender, branch)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Internal server error",
@@ -23,6 +26,9 @@ func HandleGetAllStudents(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, students)
+		c.JSON(http.StatusOK, gin.H{
+			"users":       students,
+			"total_users": len(students),
+		})
 	}
 }

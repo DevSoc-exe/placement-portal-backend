@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
@@ -237,24 +239,57 @@ func (db *Database) VerifyUser(userId, token string) error {
 	return nil
 }
 
-func (db *Database) GetAllStudents(pageOffset ...string) ([]*models.User, error) {
+func (db *Database) GetAllStudents(args ...string) ([]*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
 	offset := "1"
-	if len(pageOffset) > 0 {
-		offset = pageOffset[0]
+	gender := ""
+	branch := ""
+	if len(args) > 0 {
+		offset = args[0]
+		gender = args[1]
+		branch = args[2]
 	}
 
-	query := `SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users LIMIT 10 OFFSET ?;`
-	rows, err := db.DB.QueryContext(ctx, query, offset)
+	var query string
+	queryArgs := []interface{}{}
+
+	// Build gender filter
+	if gender != "" {
+		genderList := strings.Split(gender, ",")
+		genderPlaceholders := strings.Repeat("?,", len(genderList)-1) + "?"
+		queryArgs = append(queryArgs, convertToInterfaceSlice(genderList)...)
+		query += fmt.Sprintf("gender IN (%s)", genderPlaceholders)
+	}
+
+	// Build branch filter
+	if branch != "" {
+		if query != "" {
+			query += " AND "
+		}
+		branchList := strings.Split(branch, ",")
+		branchPlaceholders := strings.Repeat("?,", len(branchList)-1) + "?"
+		queryArgs = append(queryArgs, convertToInterfaceSlice(branchList)...)
+		query += fmt.Sprintf("branch IN (%s)", branchPlaceholders)
+	}
+
+	queryArgs = append(queryArgs, offset)
+
+	// Base query with filters and pagination
+	if query != "" {
+		query = "SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users WHERE " + query + " LIMIT 10 OFFSET ?"
+	} else {
+		query = "SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users LIMIT 10 OFFSET ?"
+	}
+	log.Println(query, queryArgs)
+	rows, err := db.DB.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var studentData []*models.User
-
 	for rows.Next() {
 		var data models.User
 		err := rows.Scan(
@@ -273,7 +308,6 @@ func (db *Database) GetAllStudents(pageOffset ...string) ([]*models.User, error)
 		if err != nil {
 			return nil, err
 		}
-
 		studentData = append(studentData, &data)
 	}
 
@@ -282,4 +316,13 @@ func (db *Database) GetAllStudents(pageOffset ...string) ([]*models.User, error)
 	}
 
 	return studentData, nil
+}
+
+// Helper function to convert string slice to interface slice
+func convertToInterfaceSlice(strs []string) []interface{} {
+	interfaces := make([]interface{}, len(strs))
+	for i, s := range strs {
+		interfaces[i] = s
+	}
+	return interfaces
 }

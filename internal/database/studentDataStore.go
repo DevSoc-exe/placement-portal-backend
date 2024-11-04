@@ -132,13 +132,13 @@ func (db *Database) DeleteStudentData(id string) error {
 	return nil
 }
 
-func (db *Database) GetAllStudentData(pageOffset ...string) ([]*models.StudentData, error) {
+func (db *Database) GetAllStudentData(args ...string) ([]*models.StudentData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
 	offset := "1"
-	if len(pageOffset) > 0 {
-		offset = pageOffset[0]
+	if len(args) > 0 {
+		offset = args[0]
 	}
 
 	query := `SELECT * FROM student_data LIMIT 10 OFFSET $1;`
