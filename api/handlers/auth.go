@@ -14,14 +14,15 @@ import (
 
 func HandleGetOTP(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req models.LoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
+		//
+		email := c.Query("email")
+		if email == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
 
 		// auth, err := h.store.GetUserByEmail(req.Email)
-		user, err := s.GetUserByEmail(req.Email)
+		user, err := s.GetUserByEmail(email)
 		if err != nil || user == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err.Error()})
 			return
@@ -205,14 +206,14 @@ func Register(s models.Store) gin.HandlerFunc {
 
 func HandleGetUserdata(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		email, exists := c.Get("email")
+		id, exists := c.Get("userID")
 		if !exists {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Email not found in context"})
 			return
 		}
-		fmt.Println(email)
+		fmt.Println(id)
 
-		user, err := s.GetUserByEmail(email.(string))
+		user, err := s.GetUserByID(id.(string))
 		if err != nil || user == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
 			return
@@ -284,20 +285,25 @@ func HandleLogoutUser(s models.Store) gin.HandlerFunc {
 func HandleRefreshToken(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Retrieve auth by ID
-		refreshToken := c.GetString("refresh_token")
-		id := c.GetString("userID")
+		refreshToken, _ := c.Get("refresh_token")
+		if refreshToken == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token not found in context"})
+			return
+		}
+
+		id, _ := c.Get("userID")
 		if id == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})
 			return
 		}
 
-		auth, err := s.GetUserByID(id)
+		auth, err := s.GetUserByID(id.(string))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		if auth.RefreshToken != refreshToken {
+		if auth.RefreshToken != refreshToken.(string) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "refresh token did not match"})
 			return
 		}

@@ -16,9 +16,8 @@ const AuthTokenValidTime = time.Minute * 15
 
 func CreateAccessToken(user *models.User, csrf string) (string, error) {
 	claims := jwt.MapClaims{
-		"exp":      time.Now().Local().Add(time.Minute * 15).Unix(), // Token expiry time
+		"exp":      time.Now().Local().Add(time.Minute * 15).Unix(),
 		"userID":   user.ID,
-		"email":    user.Email,
 		"issuedAt": time.Now().Local().Unix(),
 		"role":     user.Role,
 		"csrf":     csrf,
@@ -37,7 +36,6 @@ func CreateRefreshToken(user *models.User) (string, error) {
 	claims := jwt.MapClaims{
 		"exp":      time.Now().Local().Add(time.Hour * 24).Unix(), // Set a longer expiration time
 		"userID":   user.ID,
-		"email":    user.Email,
 		"role":     user.Role,
 		"issuedAt": time.Now().Local().Unix(),
 	}
@@ -75,7 +73,7 @@ func ValidateJWT(tokenString string) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsTokenExpired(tokenString string) (bool) {
+func IsTokenExpired(tokenString string) bool {
 	token, err := ValidateJWT(tokenString)
 	if err != nil {
 		return false

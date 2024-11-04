@@ -4,6 +4,7 @@ import (
 	// "context"
 	"database/sql"
 	"fmt"
+
 	// "time"
 
 	// "github.com/DevSoc-exe/placement-portal-backend/internal/models"
@@ -44,7 +45,12 @@ func (s *Database) InitDB() error {
 
 	err = s.createJobsTable()
 	if err != nil {
-		return fmt.Errorf("could not create users table: %s", err)
+		return fmt.Errorf("could not create Jobs table: %s", err)
+	}
+
+	err = s.createStudentDataTable()
+	if err != nil {
+		return fmt.Errorf("could not create student data table: %s", err)
 	}
 
 	// err := s.createUserTable()
@@ -59,4 +65,3 @@ func (s *Database) InitDB() error {
 
 	return nil
 }
-

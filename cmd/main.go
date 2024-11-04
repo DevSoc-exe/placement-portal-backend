@@ -19,12 +19,17 @@ func init() {
 	if env == "PRODUCTION" {
 		config.CreateKeys()
 	}
-	config.InitJWT()
 
+	mode := os.Getenv("GIN_MODE")
+	if mode == "" {
+		panic("database connection string not found")
+	}
+	gin.SetMode(mode)
+
+	config.InitJWT()
 }
 
 func main() {
-	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	fmt.Println("in to server")
 	dsn := os.Getenv("DB_CONN")

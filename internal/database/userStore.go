@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
@@ -15,7 +17,8 @@ func (s *Database) createUserTable() error {
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
-    otp TEXT,
+	gender ENUM('MALE', 'FEMALE', 'OTHERS') NOT NULL,
+	otp TEXT,
     branch VARCHAR(100) NOT NULL,
     rollnum VARCHAR(100) NOT NULL UNIQUE,
     year_of_admission INT NOT NULL,
@@ -25,7 +28,8 @@ func (s *Database) createUserTable() error {
     created_at DATETIME,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     refresh_token TEXT,
-    role ENUM('STUDENT', 'ADMIN', 'MODERATOR') NOT NULL DEFAULT 'STUDENT'
+    role ENUM('STUDENT', 'ADMIN', 'MODERATOR') NOT NULL DEFAULT 'STUDENT',
+	isOnboarded BOOLEAN NOT NULL DEFAULT FALSE
 );
 `
 	_, err := s.DB.Exec(query)
@@ -37,11 +41,11 @@ func (db *Database) CreateUser(user *models.User) error {
 	defer cancel()
 
 	query := `
-    INSERT INTO users (id, name, email, rollnum, year_of_admission, branch, student_type, verification_token, role, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
+    INSERT INTO users (id, name, email, rollnum, year_of_admission, branch, student_type, verification_token, role, gender, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
     `
 
-	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken.String, user.Role)
+	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken.String, user.Role, user.Gender)
 	if err != nil {
 		return err
 	}
@@ -53,7 +57,7 @@ func (db *Database) GetUserByEmail(email string) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `SELECT id, name, email, otp, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role FROM users WHERE email = ?;`
+	query := `SELECT id, name, email, otp, gender, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, isOnboarded FROM users WHERE email = ?;`
 	row := db.DB.QueryRowContext(ctx, query, email)
 
 	var user models.User
@@ -63,12 +67,14 @@ func (db *Database) GetUserByEmail(email string) (*models.User, error) {
 		&user.Email,
 		&user.Otp,
 		&user.RollNumber,
+		&user.Gender,
 		&user.YearOfAdmission,
 		&user.Branch,
 		&user.StudentType,
 		&user.IsVerified,
 		&user.VerificationToken,
 		&user.Role,
+		&user.IsOnboarded,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -84,17 +90,34 @@ func (db *Database) GetUserByID(id string) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `SELECT id, name, email, otp, otp_expiry, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role FROM users WHERE id = ?;`
+	query := `SELECT id, name, email, otp, gender, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, refresh_token, isOnboarded FROM users WHERE id = ?;`
 	row := db.DB.QueryRowContext(ctx, query, id)
 
 	var user models.User
-	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Otp, &user.RollNumber, &user.YearOfAdmission, &user.Branch, &user.StudentType, &user.IsVerified, &user.VerificationToken, &user.Role)
+	err := row.Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Otp,
+		&user.Gender,
+		&user.RollNumber,
+		&user.YearOfAdmission,
+		&user.Branch,
+		&user.StudentType,
+		&user.IsVerified,
+		&user.VerificationToken,
+		&user.Role,
+		&user.IsOnboarded,
+		&user.RefreshToken,
+	)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no user found with id: %s", id)
 		}
 		return nil, err
 	}
+
 	return &user, nil
 }
 
@@ -107,6 +130,7 @@ func (db *Database) RevokeUserRefreshToken(id string) error {
 
 	return err
 }
+
 func (db *Database) UpdateUserRefreshToken(refreshToken, userId string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
@@ -213,4 +237,92 @@ func (db *Database) VerifyUser(userId, token string) error {
 	}
 
 	return nil
+}
+
+func (db *Database) GetAllStudents(args ...string) ([]*models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	offset := "1"
+	gender := ""
+	branch := ""
+	if len(args) > 0 {
+		offset = args[0]
+		gender = args[1]
+		branch = args[2]
+	}
+
+	var query string
+	queryArgs := []interface{}{}
+
+	// Build gender filter
+	if gender != "" {
+		genderList := strings.Split(gender, ",")
+		genderPlaceholders := strings.Repeat("?,", len(genderList)-1) + "?"
+		queryArgs = append(queryArgs, convertToInterfaceSlice(genderList)...)
+		query += fmt.Sprintf("gender IN (%s)", genderPlaceholders)
+	}
+
+	// Build branch filter
+	if branch != "" {
+		if query != "" {
+			query += " AND "
+		}
+		branchList := strings.Split(branch, ",")
+		branchPlaceholders := strings.Repeat("?,", len(branchList)-1) + "?"
+		queryArgs = append(queryArgs, convertToInterfaceSlice(branchList)...)
+		query += fmt.Sprintf("branch IN (%s)", branchPlaceholders)
+	}
+
+	queryArgs = append(queryArgs, offset)
+
+	// Base query with filters and pagination
+	if query != "" {
+		query = "SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users WHERE " + query + " LIMIT 10 OFFSET ?"
+	} else {
+		query = "SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users LIMIT 10 OFFSET ?"
+	}
+	log.Println(query, queryArgs)
+	rows, err := db.DB.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var studentData []*models.User
+	for rows.Next() {
+		var data models.User
+		err := rows.Scan(
+			&data.ID,
+			&data.Branch,
+			&data.Email,
+			&data.IsVerified,
+			&data.Gender,
+			&data.Name,
+			&data.Role,
+			&data.RollNumber,
+			&data.StudentType,
+			&data.YearOfAdmission,
+			&data.IsOnboarded,
+		)
+		if err != nil {
+			return nil, err
+		}
+		studentData = append(studentData, &data)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return studentData, nil
+}
+
+// Helper function to convert string slice to interface slice
+func convertToInterfaceSlice(strs []string) []interface{} {
+	interfaces := make([]interface{}, len(strs))
+	for i, s := range strs {
+		interfaces[i] = s
+	}
+	return interfaces
 }
