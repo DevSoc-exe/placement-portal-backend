@@ -1,12 +1,12 @@
 package models
 
 type Company struct {
-	CompanyID string `json:"id"`
-	Name      string `json:"name"`
-	Overview  string `json:"overview"`
-	// Logo          byte   `json:"logo"`
-	ContactEmail  string `json:"contact_email"`
-	ContactNumber string `json:"contact_number"`
+	CompanyID     string `json:"id"`
+	Name          string `json:"name"`
+	Overview      string `json:"overview"`
+	HRName        string `json:"hrName"`
+	ContactEmail  string `json:"contactEmail"`
+	ContactNumber string `json:"contactNumber"`
 	LinkedIn      string `json:"linkedIn"`
 	Website       string `json:"website"`
 }

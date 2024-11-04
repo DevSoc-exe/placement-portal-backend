@@ -12,3 +12,8 @@ const (
 
 	DriveCreated HttpMessage = "Drive created successfully."
 )
+
+const (
+	CompanyCreated HttpMessage = "Company created successfully."
+	CompanyFailed  HttpMessage = "Failed to create company."
+)
