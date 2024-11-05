@@ -47,6 +47,7 @@ func AddRoutes(s *Server) {
 	server.PUT("/user/verify/:uid", handlers.HandleUserVerification(s.Str))
 	server.GET("/admin/user", handlers.HandleGetAllStudents(s.Str))
 	server.GET("/company", handlers.HandleGetAllCompanies(s.Str))
+	server.GET("/companyList", handlers.HandleGetCompaniesForUser(s.Str))
 	server.POST("/company", handlers.HandleCreateNewCompany(s.Str))
 
 	//* Auth APIs
@@ -56,6 +57,9 @@ func AddRoutes(s *Server) {
 	server.POST("/signup", handlers.Register(s.Str))
 	server.POST("/logout", handlers.HandleLogoutUser(s.Str))
 
+	// *temporarily added as public routes --------------------
+	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
+
 	//* Job Posting API
 	server.GET("/jobs/getDrive", handlers.HandleGetDriveUsingID(s.Str))
 
@@ -64,7 +68,7 @@ func AddRoutes(s *Server) {
 	adminServer.Use(middleware.AuthMiddleware(), middleware.CheckAdmin())
 	{
 		adminServer.DELETE("/jobs/delDrive", handlers.HandleDeleteDrive(s.Str))
-		adminServer.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
+		// adminServer.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
 
 		//* Student Data APIs for admin
 		adminServer.GET("/admin/user/data", handlers.HandleGetAllStudentData(s.Str))

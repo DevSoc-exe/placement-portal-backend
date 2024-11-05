@@ -37,6 +37,8 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 			return
 		}
 
+		driveBody.DateOfDrive = driveBody.DateOfDrive[0:10]
+
 		fmt.Println(driveBody)
 		err = s.CreateNewDriveUsingObject(driveBody)
 
@@ -183,6 +185,32 @@ func HandleCreateNewCompany(s models.Store) gin.HandlerFunc {
 }
 
 func HandleGetAllCompanies(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		page := c.Query("page")
+		if page == "" {
+			page = "0"
+		}
+
+		name := c.Query("q")
+
+		companies, err := s.GetAllCompanies(page, name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"companies":       companies,
+			"total_companies": len(companies),
+		})
+	}
+}
+
+func HandleGetCompaniesForUser(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		page := c.Query("page")
