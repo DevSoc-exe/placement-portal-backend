@@ -37,6 +37,8 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 			return
 		}
 
+		driveBody.DateOfDrive = driveBody.DateOfDrive[0:10]
+
 		fmt.Println(driveBody)
 		err = s.CreateNewDriveUsingObject(driveBody)
 

@@ -27,7 +27,6 @@ type Drive struct {
 	DriveDuration    int     `json:"drive_duration"`
 	Roles            []Role  `json:"roles" gorm:"foreignKey:DriveID"`
 	Location         string  `json:"location"`
-	Responsibilities string  `json:"key_responsibilities"`
 	Qualifications   string  `json:"qualifications"`
 	PointsToNote     string  `json:"points_to_note"`
 	JobDescription   string  `json:"job_description"`

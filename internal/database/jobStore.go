@@ -30,7 +30,6 @@ func (db *Database) createJobsTable() error {
 		drive_date DATE NOT NULL,
 		drive_duration INT NOT NULL,
 		location VARCHAR(255),
-		key_responsibilities LONGTEXT NOT NULL,
 		qualifications LONGTEXT NOT NULL,
 		points_to_note LONGTEXT NOT NULL,
 		job_description LONGBLOB,
@@ -76,8 +75,8 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 	}
 
 	queryToInsertDrive := `
-	INSERT INTO drive (id, company_id, drive_date, drive_duration, location, key_responsibilities, qualifications, points_to_note, job_description)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+	INSERT INTO drive (id, company_id, drive_date, drive_duration, location, qualifications, points_to_note, job_description)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 	`
 
 	fmt.Println(driveData.CompanyID)
@@ -167,14 +166,14 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (interface{}, erro
 	defer cancel()
 
 	queryToGetDriveInfo := `
-	SELECT company.company_id, name, overview, contact_email, contact_number, linked_in, website, drive_date, drive_duration, location, key_responsibilities, qualifications, points_to_note, job_description
+	SELECT company.company_id, name, overview, contact_email, contact_number, linked_in, website, drive_date, drive_duration, location, qualifications, points_to_note, job_description
 	FROM company
 	JOIN drive ON company.company_id = drive.company_id
 	WHERE drive.id = ?;
 	`
 	row := db.DB.QueryRowContext(ctx, queryToGetDriveInfo, driveID)
 	var drive models.Drive
-	err := row.Scan(&drive.CompanyID, &drive.Company.Name, &drive.Company.Overview, &drive.Company.ContactEmail, &drive.Company.ContactNumber, &drive.Company.LinkedIn, &drive.Company.Website, &drive.DateOfDrive, &drive.DriveDuration, &drive.Location, &drive.Responsibilities, &drive.Qualifications, &drive.PointsToNote, &drive.JobDescription)
+	err := row.Scan(&drive.CompanyID, &drive.Company.Name, &drive.Company.Overview, &drive.Company.ContactEmail, &drive.Company.ContactNumber, &drive.Company.LinkedIn, &drive.Company.Website, &drive.DateOfDrive, &drive.DriveDuration, &drive.Location, &drive.Qualifications, &drive.PointsToNote, &drive.JobDescription)
 
 	if err != nil {
 		return drive, err
