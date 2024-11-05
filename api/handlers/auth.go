@@ -214,12 +214,23 @@ func HandleGetUserdata(s models.Store) gin.HandlerFunc {
 		fmt.Println(id)
 
 		user, err := s.GetUserByID(id.(string))
+		userRes := &models.UserResponse{
+			ID:              user.ID,
+			Name:            user.Name,
+			Email:           user.Email,
+			Gender:          user.Gender,
+			RollNumber:      user.RollNumber,
+			YearOfAdmission: user.YearOfAdmission,
+			Branch:          user.Branch,
+			StudentType:     user.StudentType,
+			IsOnboarded:     user.IsOnboarded,
+		}
 		if err != nil || user == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err})
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Email", "error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": user, "success": true})
+		c.JSON(http.StatusOK, gin.H{"data": userRes, "success": true})
 	}
 }
 

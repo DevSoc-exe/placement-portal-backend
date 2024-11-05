@@ -107,8 +107,8 @@ func (db *Database) GetUserByID(id string) (*models.User, error) {
 		&user.IsVerified,
 		&user.VerificationToken,
 		&user.Role,
-		&user.IsOnboarded,
 		&user.RefreshToken,
+		&user.IsOnboarded,
 	)
 
 	if err != nil {
@@ -307,10 +307,8 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 			&data.ID,
 			&data.Branch,
 			&data.Email,
-			&data.IsVerified,
 			&data.Gender,
 			&data.Name,
-			&data.Role,
 			&data.RollNumber,
 			&data.StudentType,
 			&data.YearOfAdmission,

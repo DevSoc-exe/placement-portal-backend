@@ -31,8 +31,6 @@ type UserResponse struct {
 	YearOfAdmission int    `json:"year_of_admission"`
 	Branch          string `json:"branch"`
 	StudentType     string `json:"student_type"`
-	IsVerified      bool   `json:"is_verified"`
-	Role            string `json:"role"`
 	IsOnboarded     bool   `json:"isOnboarded"`
 }
 
