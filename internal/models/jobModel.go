@@ -11,6 +11,14 @@ type Company struct {
 	Website       string `json:"website"`
 }
 
+type CompanyResponse struct {
+	CompanyID string `json:"id"`
+	Name      string `json:"name"`
+	Overview  string `json:"overview"`
+	LinkedIn  string `json:"linkedIn"`
+	Website   string `json:"website"`
+}
+
 type Drive struct {
 	ID               string  `json:"id"`
 	CompanyID        string  `json:"company_id"`
@@ -36,14 +44,12 @@ type Role struct {
 }
 
 type DriveBody struct {
-	ID               string `json:"id"`
-	CompanyID        string `json:"company_id"`
-	DateOfDrive      string `json:"drive_date"`
-	DriveDuration    int    `json:"drive_duration"`
-	Roles            []Role `json:"roles"`
-	Location         string `json:"location"`
-	Responsibilities string `json:"key_responsibilities"`
-	Qualifications   string `json:"qualifications"`
-	PointsToNote     string `json:"points_to_note"`
-	JobDescription   string `json:"job_description"`
+	CompanyID      string `json:"company_id"`
+	DateOfDrive    string `json:"drive_date"`
+	DriveDuration  int    `json:"drive_duration"`
+	Roles          []Role `json:"roles"`
+	Location       string `json:"location"`
+	Qualifications string `json:"qualifications"`
+	PointsToNote   string `json:"points_to_note"`
+	JobDescription string `json:"job_description"`
 }

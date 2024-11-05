@@ -21,6 +21,7 @@ type Store interface {
 	//* Company
 	AddNewCompany(company *Company) error
 	GetAllCompanies(args ...string) ([]Company, error)
+	GetAllCompaniesForUser(args ...string) ([]CompanyResponse, error)
 
 	AddStudentData(user *StudentData) error
 	GetStudentDataByID(id string) (*StudentData, error)

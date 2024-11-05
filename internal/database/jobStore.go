@@ -81,8 +81,9 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 	`
 
 	fmt.Println(driveData.CompanyID)
+	driveUUID := nanoid.New()
 	date, err := time.Parse("2006-01-02", driveData.DateOfDrive)
-	_, err = tx.ExecContext(ctx, queryToInsertDrive, driveData.ID, driveData.CompanyID, date, driveData.DriveDuration, driveData.Location, driveData.Responsibilities, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription)
+	_, err = tx.ExecContext(ctx, queryToInsertDrive, driveUUID, driveData.CompanyID, date, driveData.DriveDuration, driveData.Location, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription)
 	if err != nil {
 		fmt.Println("error was here!")
 		tx.Rollback()
@@ -99,7 +100,7 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 	for _, role := range driveData.Roles {
 		roleUUID := nanoid.New()
 		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
-		valueArgs = append(valueArgs, roleUUID, role.DriveID, role.Title, role.StipendLow, role.StipendHigh, role.SalaryLow, role.SalaryHigh)
+		valueArgs = append(valueArgs, roleUUID, driveUUID, role.Title, role.StipendLow, role.StipendHigh, role.SalaryLow, role.SalaryHigh)
 	}
 
 	queryToInsertRoles += strings.Join(valueStrings, ", ")
@@ -259,6 +260,55 @@ func (db *Database) GetAllCompanies(args ...string) ([]models.Company, error) {
 	for rows.Next() {
 		company := new(models.Company)
 		if err := rows.Scan(&company.CompanyID, &company.Name, &company.HRName, &company.Overview, &company.ContactEmail, &company.ContactNumber, &company.LinkedIn, &company.Website); err != nil {
+			return nil, err
+		}
+		companies = append(companies, *company)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return companies, nil
+}
+
+func (db *Database) GetAllCompaniesForUser(args ...string) ([]models.CompanyResponse, error) {
+	companies := make([]models.CompanyResponse, 0)
+
+	offset := "1"
+	name := ""
+	if len(args) > 0 {
+		offset = args[0]
+		name = args[1]
+	}
+
+	var query string
+	queryArgs := []interface{}{}
+
+	if name != "" {
+		query += "name LIKE ?"
+		queryArgs = append(queryArgs, "%"+name+"%")
+	}
+
+	queryArgs = append(queryArgs, offset)
+
+	if query != "" {
+		query = "SELECT * FROM company WHERE " + query + " LIMIT 10 OFFSET ?;"
+	} else {
+		query = "SELECT * FROM company LIMIT 10 OFFSET ?"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	rows, err := db.DB.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		company := new(models.CompanyResponse)
+		if err := rows.Scan(&company.CompanyID, &company.Name, &company.Overview, &company.LinkedIn, &company.Website); err != nil {
 			return nil, err
 		}
 		companies = append(companies, *company)
