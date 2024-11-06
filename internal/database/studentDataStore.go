@@ -21,6 +21,7 @@ func (s *Database) createStudentDataTable() error {
 		sgpasem4 DECIMAL(3, 2) NOT NULL,
 		sgpasem5 DECIMAL(3, 2) NOT NULL,
 		sgpasem6 DECIMAL(3, 2) NOT NULL,
+		cgpa DECIMAL(3, 2) NOT NULL,
 		marks10th DECIMAL(5, 2) NOT NULL,
 		marks12th DECIMAL(5, 2) NOT NULL,
 		sgpa_proofs VARCHAR(255) NOT NULL,
@@ -47,8 +48,8 @@ func (db *Database) AddStudentData(user *models.StudentData) error {
 		return err
 	}
 
-	query := `insert into student_data (id, sgpasem1, sgpasem2, sgpasem3, sgpasem4, sgpasem5, sgpasem6, marks10th, marks12th, sgpa_proofs, achievement_certificates, college_id_card) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
-	_, err = tx.ExecContext(ctx, query, user.ID, user.Sem1SGPA, user.Sem2SGPA, user.Sem3SGPA, user.Sem4SGPA, user.Sem5SGPA, user.Sem6SGPA, user.Marks10th, user.Marks12th, user.SgpaProofs, user.AchievementCertificates, user.CollegeIdCard)
+	query := `insert into student_data (id, sgpasem1, sgpasem2, sgpasem3, sgpasem4, sgpasem5, sgpasem6,cgpa, marks10th, marks12th, sgpa_proofs, achievement_certificates, college_id_card) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+	_, err = tx.ExecContext(ctx, query, user.ID, user.Sem1SGPA, user.Sem2SGPA, user.Sem3SGPA, user.Sem4SGPA, user.Sem5SGPA, user.Sem6SGPA, user.Cgpa, user.Marks10th, user.Marks12th, user.SgpaProofs, user.AchievementCertificates, user.CollegeIdCard)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -78,7 +79,7 @@ func (db *Database) GetStudentDataByID(id string) (*models.StudentData, error) {
 
 	var studentData models.StudentData
 
-	err := row.Scan(&studentData.ID, &studentData.Sem1SGPA, &studentData.Sem2SGPA, &studentData.Sem3SGPA, &studentData.Sem4SGPA, &studentData.Sem5SGPA, &studentData.Sem6SGPA, &studentData.Marks10th, &studentData.Marks12th, &studentData.SgpaProofs, &studentData.AchievementCertificates, &studentData.CollegeIdCard)
+	err := row.Scan(&studentData.ID, &studentData.Sem1SGPA, &studentData.Sem2SGPA, &studentData.Sem3SGPA, &studentData.Sem4SGPA, &studentData.Sem5SGPA, &studentData.Sem6SGPA, &studentData.Cgpa, &studentData.Marks10th, &studentData.Marks12th, &studentData.SgpaProofs, &studentData.AchievementCertificates, &studentData.CollegeIdCard)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +91,9 @@ func (db *Database) UpdateStudentData(user *models.StudentData) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `update student_data set sgpasem1 = ?, sgpasem2 = ?, sgpasem3 = ?, sgpasem4 = ?, sgpasem5 = ?, sgpasem6 = ?, marks10th = ?, marks12th = ?, sgpa_proofs = ?, achievement_certificates = ?, college_id_card = ? where id = ?;`
+	query := `update student_data set sgpasem1 = ?, sgpasem2 = ?, sgpasem3 = ?, sgpasem4 = ?, sgpasem5 = ?, sgpasem6 = ?, cgpa = ?, marks10th = ?, marks12th = ?, sgpa_proofs = ?, achievement_certificates = ?, college_id_card = ? where id = ?;`
 
-	_, err := db.DB.ExecContext(ctx, query, user.Sem1SGPA, user.Sem2SGPA, user.Sem3SGPA, user.Sem4SGPA, user.Sem5SGPA, user.Sem6SGPA, user.Marks10th, user.Marks12th, user.SgpaProofs, user.AchievementCertificates, user.CollegeIdCard, user.ID)
+	_, err := db.DB.ExecContext(ctx, query, user.Sem1SGPA, user.Sem2SGPA, user.Sem3SGPA, user.Sem4SGPA, user.Sem5SGPA, user.Sem6SGPA, user.Cgpa, user.Marks10th, user.Marks12th, user.SgpaProofs, user.AchievementCertificates, user.CollegeIdCard, user.ID)
 
 	if err != nil {
 		return err
@@ -152,7 +153,7 @@ func (db *Database) GetAllStudentData(args ...string) ([]*models.StudentData, er
 
 	for rows.Next() {
 		var data models.StudentData
-		err := rows.Scan(&data.ID, &data.Sem1SGPA, &data.Sem2SGPA, &data.Sem3SGPA, &data.Sem4SGPA, &data.Sem5SGPA, &data.Sem6SGPA, &data.Marks10th, &data.Marks12th, &data.SgpaProofs, &data.AchievementCertificates, &data.CollegeIdCard)
+		err := rows.Scan(&data.ID, &data.Sem1SGPA, &data.Sem2SGPA, &data.Sem3SGPA, &data.Sem4SGPA, &data.Sem5SGPA, &data.Sem6SGPA, &data.Cgpa, &data.Marks10th, &data.Marks12th, &data.SgpaProofs, &data.AchievementCertificates, &data.CollegeIdCard)
 		if err != nil {
 			return nil, err
 		}

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Company struct {
 	CompanyID     string `json:"id"`
 	Name          string `json:"name"`
@@ -20,16 +22,18 @@ type CompanyResponse struct {
 }
 
 type Drive struct {
-	ID               string  `json:"id"`
-	CompanyID        string  `json:"company_id"`
-	Company          Company `json:"company" gorm:"foreignKey:CompanyID"`
-	DateOfDrive      string  `json:"drive_date"`
-	DriveDuration    int     `json:"drive_duration"`
-	Roles            []Role  `json:"roles" gorm:"foreignKey:DriveID"`
-	Location         string  `json:"location"`
-	Qualifications   string  `json:"qualifications"`
-	PointsToNote     string  `json:"points_to_note"`
-	JobDescription   string  `json:"job_description"`
+	ID             string    `json:"id"`
+	CompanyID      string    `json:"company_id"`
+	Company        Company   `json:"company" gorm:"foreignKey:CompanyID"`
+	DateOfDrive    string    `json:"drive_date"`
+	DriveDuration  int       `json:"drive_duration"`
+	Roles          []Role    `json:"roles" gorm:"foreignKey:DriveID"`
+	MinCGPA        float32   `json:"min_cgpa"`
+	Deadline       time.Time `json:"deadline"`
+	Location       string    `json:"location"`
+	Qualifications string    `json:"qualifications"`
+	PointsToNote   string    `json:"points_to_note"`
+	JobDescription string    `json:"job_description"`
 }
 
 type Role struct {
@@ -43,12 +47,14 @@ type Role struct {
 }
 
 type DriveBody struct {
-	CompanyID      string `json:"company_id"`
-	DateOfDrive    string `json:"drive_date"`
-	DriveDuration  int    `json:"drive_duration"`
-	Roles          []Role `json:"roles"`
-	Location       string `json:"location"`
-	Qualifications string `json:"qualifications"`
-	PointsToNote   string `json:"points_to_note"`
-	JobDescription string `json:"job_description"`
+	CompanyID      string    `json:"company_id"`
+	DateOfDrive    string    `json:"drive_date"`
+	DriveDuration  int       `json:"drive_duration"`
+	Roles          []Role    `json:"roles"`
+	Deadline       time.Time `json:"deadline"`
+	Location       string    `json:"location"`
+	Qualifications string    `json:"qualifications"`
+	PointsToNote   string    `json:"points_to_note"`
+	JobDescription string    `json:"job_description"`
+	MinCGPA        float32   `json:"min_cgpa"`
 }

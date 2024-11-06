@@ -16,7 +16,8 @@ func (s *Database) createUserTable() error {
 	query := `CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
+	phone_number VARCHAR(15) NOT NULL,
+	email VARCHAR(255) NOT NULL UNIQUE,
 	gender ENUM('MALE', 'FEMALE', 'OTHERS') NOT NULL,
 	otp TEXT,
     branch VARCHAR(100) NOT NULL,
@@ -41,11 +42,11 @@ func (db *Database) CreateUser(user *models.User) error {
 	defer cancel()
 
 	query := `
-    INSERT INTO users (id, name, email, rollnum, year_of_admission, branch, student_type, verification_token, role, gender, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
+    INSERT INTO users (id, name, phone_number, email, rollnum, year_of_admission, branch, student_type, verification_token, role, gender, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());
     `
 
-	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken.String, user.Role, user.Gender)
+	_, err := db.DB.ExecContext(ctx, query, user.ID, user.Name, user.PhoneNumber, user.Email, user.RollNumber, user.YearOfAdmission, user.Branch, user.StudentType, user.VerificationToken.String, user.Role, user.Gender)
 	if err != nil {
 		return err
 	}
@@ -57,13 +58,14 @@ func (db *Database) GetUserByEmail(email string) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `SELECT id, name, email, otp, gender, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, isOnboarded FROM users WHERE email = ?;`
+	query := `SELECT id, name, phone_number, email, otp, gender, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, isOnboarded FROM users WHERE email = ?;`
 	row := db.DB.QueryRowContext(ctx, query, email)
 
 	var user models.User
 	err := row.Scan(
 		&user.ID,
 		&user.Name,
+		&user.PhoneNumber,
 		&user.Email,
 		&user.Otp,
 		&user.RollNumber,
@@ -90,13 +92,14 @@ func (db *Database) GetUserByID(id string) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `SELECT id, name, email, otp, gender, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, refresh_token, isOnboarded FROM users WHERE id = ?;`
+	query := `SELECT id, name, phone_number, email, otp, gender, rollnum, year_of_admission, branch, student_type, is_verified, verification_token, role, refresh_token, isOnboarded FROM users WHERE id = ?;`
 	row := db.DB.QueryRowContext(ctx, query, id)
 
 	var user models.User
 	err := row.Scan(
 		&user.ID,
 		&user.Name,
+		&user.PhoneNumber,
 		&user.Email,
 		&user.Otp,
 		&user.Gender,
@@ -289,9 +292,9 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 
 	// Base query with filters and pagination
 	if query != "" {
-		query = "SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users WHERE " + query + " LIMIT 10 OFFSET ?"
+		query = "SELECT id, branch, email, gender, name, rollnum, student_type, year_of_admission, isOnboarded, phone_number FROM users WHERE " + query + " LIMIT 10 OFFSET ?"
 	} else {
-		query = "SELECT id, branch, email, is_verified, gender, name, role, rollnum, student_type, year_of_admission, isOnboarded FROM users LIMIT 10 OFFSET ?"
+		query = "SELECT id, branch, email, gender, name, rollnum, student_type, year_of_admission, isOnboarded, phone_number FROM users LIMIT 10 OFFSET ?"
 	}
 	log.Println(query, queryArgs)
 	rows, err := db.DB.QueryContext(ctx, query, queryArgs...)
@@ -313,6 +316,7 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 			&data.StudentType,
 			&data.YearOfAdmission,
 			&data.IsOnboarded,
+			&data.PhoneNumber,
 		)
 		if err != nil {
 			return nil, err

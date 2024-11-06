@@ -30,9 +30,11 @@ func (db *Database) createJobsTable() error {
 		drive_date DATE NOT NULL,
 		drive_duration INT NOT NULL,
 		location VARCHAR(255),
+		min_cgpa DECIMAL(3,2) NOT NULL,
+		deadline DATETIME NOT NULL,
 		qualifications LONGTEXT NOT NULL,
 		points_to_note LONGTEXT NOT NULL,
-		job_description LONGBLOB,
+		job_description VARCHAR(255),
 		FOREIGN KEY (company_id) REFERENCES company(company_id) ON DELETE CASCADE
 	);`
 
@@ -75,14 +77,14 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.DriveBody) error 
 	}
 
 	queryToInsertDrive := `
-	INSERT INTO drive (id, company_id, drive_date, drive_duration, location, qualifications, points_to_note, job_description)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+	INSERT INTO drive (id, company_id, drive_date, drive_duration, location, qualifications, points_to_note, job_description, min_cgpa, deadline)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`
 
 	fmt.Println(driveData.CompanyID)
 	driveUUID := nanoid.New()
-	date, err := time.Parse("2006-01-02", driveData.DateOfDrive)
-	_, err = tx.ExecContext(ctx, queryToInsertDrive, driveUUID, driveData.CompanyID, date, driveData.DriveDuration, driveData.Location, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription)
+	date, _ := time.Parse("2006-01-02", driveData.DateOfDrive)
+	_, err = tx.ExecContext(ctx, queryToInsertDrive, driveUUID, driveData.CompanyID, date, driveData.DriveDuration, driveData.Location, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription, driveData.MinCGPA, driveData.Deadline)
 	if err != nil {
 		fmt.Println("error was here!")
 		tx.Rollback()
@@ -242,9 +244,9 @@ func (db *Database) GetAllCompanies(args ...string) ([]models.Company, error) {
 	queryArgs = append(queryArgs, offset)
 
 	if query != "" {
-		query = "SELECT * FROM company WHERE " + query + " LIMIT 10 OFFSET ?;"
+		query = "SELECT company_id, name, overview, hr_name, contact_email, contact_number, linked_in, website FROM company WHERE " + query + " LIMIT 10 OFFSET ?;"
 	} else {
-		query = "SELECT * FROM company LIMIT 10 OFFSET ?"
+		query = "SELECT company_id, name, overview, hr_name, contact_email, contact_number, linked_in, website FROM company LIMIT 10 OFFSET ?"
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
@@ -258,7 +260,7 @@ func (db *Database) GetAllCompanies(args ...string) ([]models.Company, error) {
 
 	for rows.Next() {
 		company := new(models.Company)
-		if err := rows.Scan(&company.CompanyID, &company.Name, &company.HRName, &company.Overview, &company.ContactEmail, &company.ContactNumber, &company.LinkedIn, &company.Website); err != nil {
+		if err := rows.Scan(&company.CompanyID, &company.Name, &company.Overview, &company.HRName, &company.ContactEmail, &company.ContactNumber, &company.LinkedIn, &company.Website); err != nil {
 			return nil, err
 		}
 		companies = append(companies, *company)

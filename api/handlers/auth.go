@@ -182,6 +182,8 @@ func Register(s models.Store) gin.HandlerFunc {
 			ID:                userId,
 			Email:             auth.Email,
 			Name:              auth.Name,
+			PhoneNumber:       auth.PhoneNumber,
+			Gender:            auth.Gender,
 			YearOfAdmission:   auth.YearOfAdmission,
 			VerificationToken: verification_token,
 			RollNumber:        auth.RollNum,
