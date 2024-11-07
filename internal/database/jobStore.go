@@ -320,3 +320,23 @@ func (db *Database) GetAllCompaniesForUser(args ...string) ([]models.CompanyResp
 
 	return companies, nil
 }
+
+func (db *Database) GetCompanyFromCompnayID(companyID string) (interface{}, error) {
+
+	queryToGetCompany := `
+    SELECT name, overview, linked_in, website
+    FROM company
+    WHERE company_id = ?;
+    `
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	var company models.CompanyResponse
+	row := db.DB.QueryRowContext(ctx, queryToGetCompany, companyID)
+	err := row.Scan(&company.Name, &company.Overview, &company.LinkedIn, &company.Website)
+	if err != nil {
+		return nil, err
+	}
+	return company, err
+}

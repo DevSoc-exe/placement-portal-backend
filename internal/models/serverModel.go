@@ -15,6 +15,7 @@ type Store interface {
 	DeleteJobUsingDriveID(driveID string) error
 	GetJobPostingUsingDriveID(driveID string) (interface{}, error)
 	CreateNewDriveUsingObject(driveData DriveBody) error
+	GetCompanyFromCompnayID(companyID string) (interface{}, error)
 
 	GetRolesUsingDriveID(driveID string) ([]Role, error)
 

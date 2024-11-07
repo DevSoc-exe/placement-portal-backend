@@ -210,6 +210,27 @@ func HandleGetAllCompanies(s models.Store) gin.HandlerFunc {
 	}
 }
 
+func HandleGetCompanyFromID(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		companyID := c.Query("id")
+
+		company, err := s.GetCompanyFromCompnayID(companyID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": err.Error(),
+			})
+			return
+		}
+		respSuccess := responses.ApiResponse{
+			Success: true,
+			Message: string(responses.CompanyCreated),
+			Data:    company,
+		}
+		respSuccess.MapApiResponse(c, http.StatusCreated)
+	}
+}
 func HandleGetCompaniesForUser(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
