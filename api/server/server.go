@@ -47,7 +47,6 @@ func AddRoutes(s *Server) {
 	server.PUT("/user/verify/:uid", handlers.HandleUserVerification(s.Str))
 	server.GET("/admin/user", handlers.HandleGetAllStudents(s.Str))
 	server.GET("/company", handlers.HandleGetAllCompanies(s.Str))
-	server.GET("/companyList", handlers.HandleGetCompaniesForUser(s.Str))
 	server.POST("/company", handlers.HandleCreateNewCompany(s.Str))
 
 	//* Auth APIs
@@ -61,6 +60,7 @@ func AddRoutes(s *Server) {
 	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
 
 	//* Job Posting API
+	//! TO BE REMOVED TO PROTECTED API
 	server.GET("/jobs/getDrive", handlers.HandleGetDriveUsingID(s.Str))
 
 	//* Admin APIs
@@ -80,6 +80,14 @@ func AddRoutes(s *Server) {
 	userServer.Use(middleware.AuthMiddleware())
 	{
 		userServer.GET("/user", handlers.HandleGetUserdata(s.Str))
+
+		//* Drive APIs for user
+		userServer.GET("/user/drive", handlers.HandleGetDrivesForUser(s.Str))
+		userServer.GET("/user/drive/:id", handlers.HandleGetDriveUsingID(s.Str))
+		userServer.POST("/user/drive", handlers.HandleApplyToDrive(s.Str))
+
+		//* Company APIs for user
+		userServer.GET("/user/company", handlers.HandleGetCompaniesForUser(s.Str))
 
 		//* Student Data APIs for user
 		userServer.POST("/user/data", handlers.HandleAddNewStudentData(s.Str))

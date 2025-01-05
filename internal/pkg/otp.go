@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -71,13 +72,14 @@ func CheckOTPToken(tokenString string) (int, error) {
 
 func createOTP() int {
 	place := 1
-	var result = 0
+	var result = 0	
 
 	for i := 1; i <= 6; i++ {
 		num := place * rand.Intn(10)
 		result = result + num
 		place = place * 10
 	}
-
+	//! FOR TESTING
+	log.Println("OTP: ", result);
 	return result
 }
