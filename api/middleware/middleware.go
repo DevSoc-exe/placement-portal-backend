@@ -42,7 +42,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString, err := c.Cookie("auth_token")
 		if err != nil || tokenString == "" {
-			fmt.Println("NO AUTH COOKIE", err)
+			fmt.Println("NO AUTH COOKIE", err.Error())
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token missing"})
 			c.Abort()
 			return

@@ -53,6 +53,11 @@ func (s *Database) InitDB() error {
 		return fmt.Errorf("could not create student data table: %s", err)
 	}
 
+	err = s.createApplicationsTable()
+	if err != nil {
+		return fmt.Errorf("could not create applications table: %s", err)
+	}
+
 	// err := s.createUserTable()
 	// if err != nil {
 	// 	return fmt.Errorf("could not create users table: %s", err)

@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
+	"github.com/DevSoc-exe/placement-portal-backend/internal/pkg"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/responses"
 
 	// "github.com/DevSoc-exe/placement-portal-backend/internal/pkg"
@@ -29,7 +31,6 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 		}
 
 		var driveBody models.DriveBody
-
 		err := c.BindJSON(&driveBody)
 		if err != nil {
 			respError.Message = string(responses.BindError)
@@ -37,11 +38,33 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		driveBody.DateOfDrive = driveBody.DateOfDrive[0:10]
+		// driveBody.DateOfDrive = driveBody.DateOfDrive[0:10]
+		var drive models.Drive
+		drive.DateOfDrive, drive.Deadline, err = pkg.ParseDates(driveBody.DateOfDrive, driveBody.Deadline)
+		if err != nil {
+			respError.Message = string("Error parsing dates")
+			respError.MapApiResponse(c, http.StatusBadRequest)
+			return
+		}
 
-		fmt.Println(driveBody)
-		err = s.CreateNewDriveUsingObject(driveBody)
+		allowed_branches := driveBody.AllowedBranches
+		drive.Cse_allowed = strings.Contains(allowed_branches, "Computer Science and Engineering")
+		drive.Ece_allowed = strings.Contains(allowed_branches, "Electronics and Communication Engineering")
+		drive.Mech_allowed = strings.Contains(allowed_branches, "Mechanical Engineering")
+		drive.Civ_allowed = strings.Contains(allowed_branches, "Civil Engineering")
 
+		drive.CompanyID = driveBody.CompanyID
+		drive.DriveDuration = driveBody.DriveDuration
+		drive.Roles = driveBody.Roles
+		drive.Location = driveBody.Location
+		drive.Qualifications = driveBody.Qualifications
+		drive.PointsToNote = driveBody.PointsToNote
+		drive.JobDescription = driveBody.JobDescription
+		drive.MinCGPA = driveBody.MinCGPA
+		drive.DriveType = driveBody.DriveType
+		drive.RequiredData = driveBody.RequiredData
+
+		err = s.CreateNewDriveUsingObject(drive)
 		if err != nil {
 			respError.Message = string(err.Error())
 			respError.MapApiResponse(c, http.StatusInternalServerError)
@@ -54,34 +77,57 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 			Data:    nil,
 		}
 		respSuccess.MapApiResponse(c, http.StatusCreated)
-		return
 	}
 }
 
 func HandleGetDriveUsingID(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		fmt.Print("Inside Backend!")
-		var body struct {
-			DriveID string
-		}
-
 		respError := responses.ApiResponse{
 			Success: false,
 			Message: "",
 			Data:    nil,
 		}
 
-		if err := c.Bind(&body); err != nil {
-			respError.Message = string(responses.BindError)
-			respError.MapApiResponse(c, http.StatusBadRequest)
+		userID, exists := c.Get("userID")
+		if !exists {
+			respError.Message = string(responses.UserNotFound)
+			respError.MapApiResponse(c, http.StatusUnauthorized)
+			return
 		}
 
-		data, err := s.GetJobPostingUsingDriveID(body.DriveID)
+		id, exists := c.Params.Get("id")
+		if !exists {
+			respError.Message = string(responses.DriveNotFound)
+			respError.MapApiResponse(c, http.StatusNotFound)
+			return
+		}
 
-		fmt.Println(err)
-		if err == sql.ErrNoRows {
+		data, err := s.GetJobPostingUsingDriveID(id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				respError.Message = string(responses.DriveNotFound)
+				respError.MapApiResponse(c, http.StatusNotFound)
+			} else {
+				respError.Message = string(responses.DatabaseError)
+				respError.MapApiResponse(c, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		appliedRole, err := s.GetAppliedRole(userID.(string), id)
+		if err != nil && err != sql.ErrNoRows {
 			respError.Message = string(responses.DatabaseError)
 			respError.MapApiResponse(c, http.StatusInternalServerError)
+			return
+		}
+
+		if appliedRole != nil {
+			data.AppliedRole.ID = appliedRole.ID
+			data.AppliedRole.DriveID = appliedRole.DriveID
+			data.AppliedRole.SalaryHigh = appliedRole.SalaryHigh
+			data.AppliedRole.SalaryLow = appliedRole.SalaryLow
+			data.AppliedRole.StipendHigh = appliedRole.StipendHigh
+			data.AppliedRole.StipendLow = appliedRole.StipendLow
 		}
 
 		respSuccess := responses.ApiResponse{
@@ -89,7 +135,7 @@ func HandleGetDriveUsingID(s models.Store) gin.HandlerFunc {
 			Message: string(responses.DriveFound),
 			Data:    data,
 		}
-		respSuccess.MapApiResponse(c, http.StatusFound)
+		respSuccess.MapApiResponse(c, http.StatusOK)
 	}
 }
 
@@ -220,7 +266,7 @@ func HandleGetCompaniesForUser(s models.Store) gin.HandlerFunc {
 
 		name := c.Query("q")
 
-		companies, err := s.GetAllCompanies(page, name)
+		companies, err := s.GetAllCompaniesForUser(page, name)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Internal server error",
@@ -232,6 +278,24 @@ func HandleGetCompaniesForUser(s models.Store) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"companies":       companies,
 			"total_companies": len(companies),
+		})
+	}
+}
+
+func HandleGetDrivesForUser(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		drives, err := s.GetAllDrivesForUser()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"drives":       drives,
+			"total_drives": len(drives),
 		})
 	}
 }

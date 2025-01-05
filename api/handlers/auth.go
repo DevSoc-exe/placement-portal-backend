@@ -48,7 +48,8 @@ func HandleGetOTP(s models.Store) gin.HandlerFunc {
 		mail := pkg.CreateOTPEmail(otp, user.Name, user.Email)
 		err = mail.SendEmail()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send OTP Email."})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send OTP Email.", "message": err.Error()})
+			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{})
