@@ -12,6 +12,7 @@ type Store interface {
 	GetUserByID(id string) (*User, error)
 	GetAllStudents(args ...string) ([]*UserResponse, error)
 	GetAllDrivesForUser() ([]DriveResponse, error)
+	GetUserMailsByBranchesAboveCGPA(branches []string, cgpaLimit float32) ([]string, error)
 
 	//* Applications
 	ApplyForDrive(userID, roleID, driveID string) error
@@ -19,7 +20,7 @@ type Store interface {
 
 	DeleteJobUsingDriveID(driveID string) error
 	GetJobPostingUsingDriveID(driveID string) (*Drive, error)
-	CreateNewDriveUsingObject(driveData Drive) error
+	CreateNewDriveUsingObject(driveData Drive) (string, error)
 
 	GetRolesUsingDriveID(driveID string) ([]Role, error)
 
@@ -27,6 +28,7 @@ type Store interface {
 	AddNewCompany(company *Company) error
 	GetAllCompanies(args ...string) ([]Company, error)
 	GetAllCompaniesForUser(args ...string) ([]CompanyResponse, error)
+	GetCompanyUsingCompanyID(companyID string) (*CompanyResponse, error)
 
 	AddStudentData(user *StudentData) error
 	GetStudentDataByID(id string) (*StudentData, error)
