@@ -48,6 +48,7 @@ func AddRoutes(s *Server) {
 	server.GET("/admin/user", handlers.HandleGetAllStudents(s.Str))
 	server.GET("/company", handlers.HandleGetAllCompanies(s.Str))
 	server.POST("/company", handlers.HandleCreateNewCompany(s.Str))
+	server.GET("/getCompanyFromID", handlers.HandleGetCompanyFromID(s.Str))
 
 	//* Auth APIs
 	server.GET("/refresh", middleware.RefreshToken(), handlers.HandleRefreshToken(s.Str))

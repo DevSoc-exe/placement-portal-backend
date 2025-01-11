@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/pkg"
@@ -15,6 +16,10 @@ import (
 	"github.com/gin-gonic/gin"
 	// "golang.org/x/crypto/bcrypt"
 )
+
+func FormatTime(t time.Time) string {
+	return t.Format("03:04 PM 02/01/2006")
+}
 
 func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -64,12 +69,31 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 		drive.DriveType = driveBody.DriveType
 		drive.RequiredData = driveBody.RequiredData
 
-		err = s.CreateNewDriveUsingObject(drive)
+		allowedBranches := strings.Split(allowed_branches, ",")
+		mailingList, err := s.GetUserMailsByBranchesAboveCGPA(allowedBranches, drive.MinCGPA)
+		company, err := s.GetCompanyUsingCompanyID(driveBody.CompanyID)
+
+		driveID, err := s.CreateNewDriveUsingObject(drive)
+		driveCrux := pkg.CompanyCrux{
+			Name:     company.Name,
+			Deadline: FormatTime(drive.Deadline),
+			ID:       driveID,
+		}
+
+		// fmt.Println(driveCrux)
 		if err != nil {
 			respError.Message = string(err.Error())
 			respError.MapApiResponse(c, http.StatusInternalServerError)
 			return
 		}
+		mail := pkg.CreateDriveUpdateNotificationEmail(mailingList, driveCrux)
+		err = mail.SendEmail()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send OTP Email.", "message": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{})
 
 		respSuccess := responses.ApiResponse{
 			Success: true,
@@ -256,6 +280,27 @@ func HandleGetAllCompanies(s models.Store) gin.HandlerFunc {
 	}
 }
 
+func HandleGetCompanyFromID(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		companyID := c.Query("id")
+
+		company, err := s.GetCompanyFromCompnayID(companyID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": err.Error(),
+			})
+			return
+		}
+		respSuccess := responses.ApiResponse{
+			Success: true,
+			Message: string(responses.CompanyCreated),
+			Data:    company,
+		}
+		respSuccess.MapApiResponse(c, http.StatusCreated)
+	}
+}
 func HandleGetCompaniesForUser(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
