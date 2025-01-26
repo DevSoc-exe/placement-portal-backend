@@ -16,7 +16,7 @@ import (
 const NUMBER_OF_DIGITS = 6
 
 func CreateOtpJwt() (int, string, error) {
-	otp, err := CreateOTP(NUMBER_OF_DIGITS)
+	otp, err := createOTP(NUMBER_OF_DIGITS)
 	if err != nil {
 		return 0, "", err
 	}
@@ -45,20 +45,20 @@ func CheckOTPToken(tokenString string) (int, error) {
 	token, err := ValidateJWT(tokenString)
 	if err != nil {
 		if err.Error() == "Token is expired" {
-			return 0, fmt.Errorf("Token expired")
+			return 0, fmt.Errorf("token expired")
 		}
 
 		if err == jwt.ErrSignatureInvalid {
-			return 0, fmt.Errorf("Invalid or expired token")
+			return 0, fmt.Errorf("invalid or expired token")
 		}
 
-		return 0, fmt.Errorf("Invalid Token")
+		return 0, fmt.Errorf("invalid token")
 	}
 
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return 0, fmt.Errorf("Invalid Token")
+		return 0, fmt.Errorf("invalid token")
 	}
 
 	otpValue, ok := claims["otp"]
@@ -76,16 +76,24 @@ func CheckOTPToken(tokenString string) (int, error) {
 	}
 }
 
-func createOTP() int {
-	place := 1
-	var result = 0
+func createOTP(numberOfDigits int) (int, error) {
+    maxLimit := int64(int(math.Pow10(numberOfDigits)) - 1)
+    lowLimit := int(math.Pow10(numberOfDigits - 1))
 
-	for i := 1; i <= 6; i++ {
-		num := place * rand.Intn(10)
-		result = result + num
-		place = place * 10
-	}
-	//! FOR TESTING
-	log.Println("OTP: ", result);
-	return result
+    randomNumber, err := rand.Int(rand.Reader, big.NewInt(maxLimit))
+    if err != nil {
+        return 0, err
+    }
+    randomNumberInt := int(randomNumber.Int64())
+
+    // Handling integers between 0, 10^(n-1) .. for n=4, handling cases between (0, 999)
+    if randomNumberInt <= lowLimit {
+        randomNumberInt += lowLimit
+    }
+
+    // Never likely to occur, kust for safe side.
+    if randomNumberInt > int(maxLimit) {
+        randomNumberInt = int(maxLimit)
+    }
+    return randomNumberInt, nil
 }
