@@ -73,13 +73,13 @@ func (db *Database) createJobsTable() error {
 	return nil
 }
 
-func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) error {
+func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
 	tx, err := db.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	queryToInsertDrive := `
@@ -92,7 +92,7 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) error {
 	_, err = tx.ExecContext(ctx, queryToInsertDrive, driveUUID, driveData.CompanyID, driveData.DateOfDrive, driveData.DriveDuration, driveData.Location, driveData.Qualifications, driveData.PointsToNote, driveData.JobDescription, driveData.MinCGPA, driveData.Deadline, driveData.DriveType, driveData.RequiredData, driveData.Cse_allowed, driveData.Ece_allowed, driveData.Civ_allowed, driveData.Mech_allowed)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return "", err
 	}
 
 	queryToInsertRoles := `
@@ -114,15 +114,15 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) error {
 	fmt.Println(queryToInsertRoles)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return "", err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return err
+	return driveUUID, err
 }
 
 func (db *Database) DeleteJobUsingDriveID(driveID string) error {
@@ -166,15 +166,28 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 	defer cancel()
 
 	queryToGetDriveInfo := `
-	SELECT id, company.company_id, name, overview, contact_email, contact_number, linked_in, website, drive_date, drive_duration, location, qualifications, points_to_note, job_description, min_cgpa, deadline, drive_type, cse_allowed, ece_allowed, civ_allowed, mech_allowed, required_data
-	FROM company
-	JOIN drive ON company.company_id = drive.company_id
-	WHERE drive.id = ?;
-	`
+    SELECT d.id, c.company_id, c.name, c.overview, c.contact_email, c.contact_number,
+           c.linked_in, c.website, d.drive_date, d.drive_duration, d.location,
+           d.qualifications, d.points_to_note, d.job_description, d.min_cgpa,
+           d.deadline, d.drive_type, d.cse_allowed, d.ece_allowed, d.civ_allowed,
+           d.mech_allowed, d.required_data
+    FROM company c
+    JOIN drive d ON c.company_id = d.company_id
+    WHERE d.id = ?;
+    `
+
 	row := db.DB.QueryRowContext(ctx, queryToGetDriveInfo, driveID)
+	fmt.Println(row)
+
 	var drive models.Drive
 
-	err := row.Scan(&drive.ID, &drive.CompanyID, &drive.Company.Name, &drive.Company.Overview, &drive.Company.ContactEmail, &drive.Company.ContactNumber, &drive.Company.LinkedIn, &drive.Company.Website, &drive.DateOfDrive, &drive.DriveDuration, &drive.Location, &drive.Qualifications, &drive.PointsToNote, &drive.JobDescription, &drive.MinCGPA, &drive.Deadline, &drive.DriveType, &drive.Cse_allowed, &drive.Ece_allowed, &drive.Civ_allowed, &drive.Mech_allowed, &drive.RequiredData)
+	err := row.Scan(&drive.ID, &drive.CompanyID, &drive.Company.Name, &drive.Company.Overview,
+		&drive.Company.ContactEmail, &drive.Company.ContactNumber, &drive.Company.LinkedIn,
+		&drive.Company.Website, &drive.DateOfDrive, &drive.DriveDuration, &drive.Location,
+		&drive.Qualifications, &drive.PointsToNote, &drive.JobDescription, &drive.MinCGPA,
+		&drive.Deadline, &drive.DriveType, &drive.Cse_allowed, &drive.Ece_allowed,
+		&drive.Civ_allowed, &drive.Mech_allowed, &drive.RequiredData)
+
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +203,17 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 
 	//! Dont Try to understand this, it's a hack, not my proudest moment
 	date := drive.Deadline.UTC().String()
+	fmt.Println("here 3")
+
 	date = date[0:20] + "+0530 IST"
+	fmt.Println("here 4")
+
 	parsedDeadline, err := time.Parse("2006-01-02 15:04:05 -0700 MST", date)
+	fmt.Println("here 5")
+
 	drive.Expired = parsedDeadline.Before(time.Now())
+
+	fmt.Println("here 6")
 
 	roles, err := db.GetRolesUsingDriveID(driveID)
 	if err != nil {
@@ -444,4 +465,24 @@ func (db *Database) GetDriveApplicantsForRole(roleID, required_data, driveID str
 	}
 
 	return rows, columns, nil
+}
+
+func (db *Database) GetCompanyUsingCompanyID(companyID string) (*models.CompanyResponse, error) {
+	query := "SELECT company_id, name, overview, linked_in, website FROM company WHERE company_id = ?"
+	queryArgs := []interface{}{companyID}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	row := db.DB.QueryRowContext(ctx, query, queryArgs...)
+	company := new(models.CompanyResponse)
+
+	if err := row.Scan(&company.CompanyID, &company.Name, &company.Overview, &company.LinkedIn, &company.Website); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return company, nil
 }

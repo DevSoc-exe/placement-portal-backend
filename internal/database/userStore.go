@@ -339,3 +339,43 @@ func convertToInterfaceSlice(strs []string) []interface{} {
 	}
 	return interfaces
 }
+
+func (db *Database) GetUserMailsByBranchesAboveCGPA(branches []string, cgpaLimit float32) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+	placeholders := make([]string, len(branches))
+	for i := range branches {
+		placeholders[i] = "?"
+	}
+
+	query := fmt.Sprintf(
+		"SELECT users.email FROM users JOIN student_data ON users.id = student_data.id WHERE branch IN (%s) AND cgpa >= %f;",
+		strings.Join(placeholders, ","),
+		cgpaLimit,
+	)
+
+	fmt.Println("Printing the Query")
+	fmt.Println(query)
+
+	rows, err := db.DB.QueryContext(ctx, query, convertToInterfaceSlice(branches)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var mailingList []string
+	for rows.Next() {
+		var studentEmail string
+		err := rows.Scan(&studentEmail)
+		if err != nil {
+			return nil, err
+		}
+		mailingList = append(mailingList, studentEmail)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return mailingList, nil
+}
