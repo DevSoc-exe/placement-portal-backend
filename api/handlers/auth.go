@@ -270,13 +270,14 @@ func HandleUserVerification(s models.Store) gin.HandlerFunc {
 
 func HandleLogoutUser(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.GetString("userID")
-		if id == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id not found in context"})
+		id, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User ID not found."})
 			return
 		}
+		fmt.Println(id)
 
-		err := s.RevokeUserRefreshToken(id)
+		err := s.RevokeUserRefreshToken(id.(string))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Some error occured"})
 			return
@@ -290,9 +291,9 @@ func HandleLogoutUser(s models.Store) gin.HandlerFunc {
 		} else {
 			domain = ".classikh.me"
 		}
-
 		c.SetCookie("auth_token", "", -1, "/", domain, secure, true)
 		c.SetCookie("refresh_token", "", -1, "/", domain, secure, true)
+		c.JSON(http.StatusNoContent, nil)
 	}
 }
 

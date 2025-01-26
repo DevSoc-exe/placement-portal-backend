@@ -180,13 +180,37 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 	fmt.Println(row)
 
 	var drive models.Drive
+	var driveDate, driveDeadline string
+	err := row.Scan(&drive.ID,
+		&drive.CompanyID,
+		&drive.Company.Name,
+		&drive.Company.Overview,
+		&drive.Company.ContactEmail,
+		&drive.Company.ContactNumber,
+		&drive.Company.LinkedIn,
+		&drive.Company.Website,
+		&driveDate,
+		&drive.DriveDuration,
+		&drive.Location,
+		&drive.Qualifications,
+		&drive.PointsToNote,
+		&drive.JobDescription,
+		&drive.MinCGPA,
+		&driveDeadline,
+		&drive.DriveType,
+		&drive.Cse_allowed,
+		&drive.Ece_allowed,
+		&drive.Civ_allowed,
+		&drive.Mech_allowed,
+		&drive.RequiredData)
+	fmt.Println("here 2")
 
-	err := row.Scan(&drive.ID, &drive.CompanyID, &drive.Company.Name, &drive.Company.Overview,
-		&drive.Company.ContactEmail, &drive.Company.ContactNumber, &drive.Company.LinkedIn,
-		&drive.Company.Website, &drive.DateOfDrive, &drive.DriveDuration, &drive.Location,
-		&drive.Qualifications, &drive.PointsToNote, &drive.JobDescription, &drive.MinCGPA,
-		&drive.Deadline, &drive.DriveType, &drive.Cse_allowed, &drive.Ece_allowed,
-		&drive.Civ_allowed, &drive.Mech_allowed, &drive.RequiredData)
+	drive.DateOfDrive, err = time.Parse("2006-01-02 15:04:05", driveDate)
+	if err != nil {
+		return nil, err
+	}
+
+	drive.Deadline, err = time.Parse("2006-01-02 15:04:05", driveDeadline)
 
 	if err != nil {
 		return nil, err
@@ -202,18 +226,16 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 	// drive.Deadline = pkg.ConvertToIST(drive.Deadline)
 
 	//! Dont Try to understand this, it's a hack, not my proudest moment
-	date := drive.Deadline.UTC().String()
-	fmt.Println("here 3")
+	// date := drive.Deadline.UTC().String()
+	// fmt.Println("here 3")
 
-	date = date[0:20] + "+0530 IST"
-	fmt.Println("here 4")
+	// date = date[0:20] + "+0530 IST"
+	// fmt.Println("here 4")
 
-	parsedDeadline, err := time.Parse("2006-01-02 15:04:05 -0700 MST", date)
-	fmt.Println("here 5")
+	// parsedDeadline, err := time.Parse("2006-01-02 15:04:05 -0700 MST", date)
+	// fmt.Println("here 5")
 
-	drive.Expired = parsedDeadline.Before(time.Now())
-
-	fmt.Println("here 6")
+	drive.Expired = drive.Deadline.Before(time.Now())
 
 	roles, err := db.GetRolesUsingDriveID(driveID)
 	if err != nil {
@@ -268,30 +290,33 @@ func (db *Database) GetAllDrivesForUser() ([]models.DriveResponse, error) {
 	for rows.Next() {
 		drive := new(models.DriveResponse)
 
+		var driveDateStr, deadlineStr string
 		if err := rows.Scan(
 			&drive.ID,
 			&drive.CompanyName,
-			&drive.DateOfDrive,
+			&driveDateStr,
 			&drive.DriveDuration,
 			&drive.Location,
 			&drive.Qualifications,
 			&drive.PointsToNote,
 			&drive.JobDescription,
 			&drive.MinCGPA,
-			&drive.Deadline,
+			&deadlineStr,
 			&drive.DriveType,
 		); err != nil {
 			return nil, err
 		}
 
-		// // Parse the deadline string to time.Time
-		// parsedDeadline, err := time.Parse("2006-01-02 15:04:05", deadlineStr)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// drive.Deadline = parsedDeadline
+		drive.DateOfDrive, err = time.Parse("2006-01-02 15:04:05", driveDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid drive date format")
+		}
 
-		// Retrieve roles as before
+		drive.Deadline, err = time.Parse("2006-01-02 15:04:05", deadlineStr)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid deadline date format.")
+		}
+
 		roles, err := db.GetRolesUsingDriveID(drive.ID)
 		if err != nil {
 			return nil, err

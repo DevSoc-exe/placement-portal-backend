@@ -74,6 +74,7 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 		company, err := s.GetCompanyUsingCompanyID(driveBody.CompanyID)
 
 		driveID, err := s.CreateNewDriveUsingObject(drive)
+
 		driveCrux := pkg.CompanyCrux{
 			Name:     company.Name,
 			Deadline: FormatTime(drive.Deadline),
@@ -132,7 +133,7 @@ func HandleGetDriveUsingID(s models.Store) gin.HandlerFunc {
 				respError.Message = string(responses.DriveNotFound)
 				respError.MapApiResponse(c, http.StatusNotFound)
 			} else {
-				respError.Message = string(responses.DatabaseError)
+				respError.Message = string(err.Error())
 				respError.MapApiResponse(c, http.StatusInternalServerError)
 			}
 			return

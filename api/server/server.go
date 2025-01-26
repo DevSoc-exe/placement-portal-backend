@@ -55,7 +55,6 @@ func AddRoutes(s *Server) {
 	server.POST("/login", handlers.Login(s.Str))
 	server.GET("/otp", handlers.HandleGetOTP(s.Str))
 	server.POST("/signup", handlers.Register(s.Str))
-	server.POST("/logout", handlers.HandleLogoutUser(s.Str))
 
 	// *temporarily added as public routes --------------------
 	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
@@ -81,6 +80,7 @@ func AddRoutes(s *Server) {
 	userServer.Use(middleware.AuthMiddleware())
 	{
 		userServer.GET("/user", handlers.HandleGetUserdata(s.Str))
+		userServer.POST("/logout", handlers.HandleLogoutUser(s.Str))
 
 		//* Drive APIs for user
 		userServer.GET("/user/drive", handlers.HandleGetDrivesForUser(s.Str))
