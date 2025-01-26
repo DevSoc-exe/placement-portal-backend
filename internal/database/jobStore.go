@@ -417,3 +417,31 @@ func (db *Database) GetAllCompaniesForUser(args ...string) ([]models.CompanyResp
 
 	return companies, nil
 }
+
+func (db *Database) GetDriveApplicantsForRole(roleID, required_data, driveID string) (*sql.Rows, []string, error) {
+
+	// Split the requested columns
+	columnList := strings.Split(required_data, ",")
+
+	// Construct the query dynamically
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM applications
+		JOIN users ON applications.user_id = users.id
+		JOIN student_data ON users.id = student_data.id
+		WHERE applications.role_id = ? AND applications.drive_id = ?`, strings.Join(columnList, ", "))
+
+	// Execute the query
+	rows, err := db.DB.Query(query, roleID, driveID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	// Get column names dynamically
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get column names: %w", err)
+	}
+
+	return rows, columns, nil
+}

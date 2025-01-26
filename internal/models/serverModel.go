@@ -1,5 +1,7 @@
 package models
 
+import "database/sql"
+
 type Store interface {
 	CreateUser(user *User) error
 	VerifyUser(userId string, token string) error
@@ -16,6 +18,7 @@ type Store interface {
 	//* Applications
 	ApplyForDrive(userID, roleID, driveID string) error
 	GetAppliedRole(userID string, driveId string) (*Role, error)
+	GetDriveApplicantsForRole(roleID, required_data, driveID string) (*sql.Rows, []string, error)
 
 	DeleteJobUsingDriveID(driveID string) error
 	GetJobPostingUsingDriveID(driveID string) (*Drive, error)

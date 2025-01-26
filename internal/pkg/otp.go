@@ -1,9 +1,10 @@
 package pkg
 
 import (
+	"crypto/rand"
 	"fmt"
-	"log"
-	"math/rand"
+	"math"
+	"math/big"
 	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/config"
@@ -11,9 +12,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+//* Number of digits in the OTP
+const NUMBER_OF_DIGITS = 6
 
 func CreateOtpJwt() (int, string, error) {
-	otp := createOTP()
+	otp, err := CreateOTP(NUMBER_OF_DIGITS)
+	if err != nil {
+		return 0, "", err
+	}
 
 	claims := jwt.MapClaims{
 		"exp":      time.Now().Local().Add(time.Minute * 15).Unix(), // Token expiry time
@@ -70,16 +76,38 @@ func CheckOTPToken(tokenString string) (int, error) {
 	}
 }
 
-func createOTP() int {
-	place := 1
-	var result = 0	
+// func createOTP() int {
+// 	place := 1
+// 	var result = 0
 
-	for i := 1; i <= 6; i++ {
-		num := place * rand.Intn(10)
-		result = result + num
-		place = place * 10
-	}
-	//! FOR TESTING
-	log.Println("OTP: ", result);
-	return result
+// 	for i := 1; i <= 6; i++ {
+// 		num := place * rand.Intn(10)
+// 		result = result + num
+// 		place = place * 10
+// 	}
+// 	//! FOR TESTING
+// 	log.Println("OTP: ", result);
+// 	return result
+// }
+
+func CreateOTP(numberOfDigits int) (int, error) {
+    maxLimit := int64(int(math.Pow10(numberOfDigits)) - 1)
+    lowLimit := int(math.Pow10(numberOfDigits - 1))
+
+    randomNumber, err := rand.Int(rand.Reader, big.NewInt(maxLimit))
+    if err != nil {
+        return 0, err
+    }
+    randomNumberInt := int(randomNumber.Int64())
+
+    // Handling integers between 0, 10^(n-1) .. for n=4, handling cases between (0, 999)
+    if randomNumberInt <= lowLimit {
+        randomNumberInt += lowLimit
+    }
+
+    // Never likely to occur, kust for safe side.
+    if randomNumberInt > int(maxLimit) {
+        randomNumberInt = int(maxLimit)
+    }
+    return randomNumberInt, nil
 }

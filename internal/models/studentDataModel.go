@@ -15,4 +15,5 @@ type StudentData struct {
 	SgpaProofs              string  `json:"sgpaProofs"`
 	AchievementCertificates string  `json:"achievementCertificates"`
 	CollegeIdCard           string  `json:"collegeIdCard"`
+	HasBacklogs			bool    `json:"has_backlogs"`
 }
