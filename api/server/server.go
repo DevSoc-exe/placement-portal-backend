@@ -59,6 +59,7 @@ func AddRoutes(s *Server) {
 
 	// *temporarily added as public routes --------------------
 	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
+	server.POST("/jobs/drive/applicant", handlers.HandleGetDriveApplicantsForRole(s.Str))
 
 	//* Job Posting API
 	//! TO BE REMOVED TO PROTECTED API
@@ -68,6 +69,7 @@ func AddRoutes(s *Server) {
 	adminServer := server.Group("/")
 	adminServer.Use(middleware.AuthMiddleware(), middleware.CheckAdmin())
 	{
+
 		adminServer.DELETE("/jobs/delDrive", handlers.HandleDeleteDrive(s.Str))
 		// adminServer.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
 

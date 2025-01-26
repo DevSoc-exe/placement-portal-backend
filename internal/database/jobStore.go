@@ -166,10 +166,10 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 	defer cancel()
 
 	queryToGetDriveInfo := `
-    SELECT d.id, c.company_id, c.name, c.overview, c.contact_email, c.contact_number, 
-           c.linked_in, c.website, d.drive_date, d.drive_duration, d.location, 
-           d.qualifications, d.points_to_note, d.job_description, d.min_cgpa, 
-           d.deadline, d.drive_type, d.cse_allowed, d.ece_allowed, d.civ_allowed, 
+    SELECT d.id, c.company_id, c.name, c.overview, c.contact_email, c.contact_number,
+           c.linked_in, c.website, d.drive_date, d.drive_duration, d.location,
+           d.qualifications, d.points_to_note, d.job_description, d.min_cgpa,
+           d.deadline, d.drive_type, d.cse_allowed, d.ece_allowed, d.civ_allowed,
            d.mech_allowed, d.required_data
     FROM company c
     JOIN drive d ON c.company_id = d.company_id
@@ -437,6 +437,34 @@ func (db *Database) GetAllCompaniesForUser(args ...string) ([]models.CompanyResp
 	}
 
 	return companies, nil
+}
+
+func (db *Database) GetDriveApplicantsForRole(roleID, required_data, driveID string) (*sql.Rows, []string, error) {
+
+	// Split the requested columns
+	columnList := strings.Split(required_data, ",")
+
+	// Construct the query dynamically
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM applications
+		JOIN users ON applications.user_id = users.id
+		JOIN student_data ON users.id = student_data.id
+		WHERE applications.role_id = ? AND applications.drive_id = ?`, strings.Join(columnList, ", "))
+
+	// Execute the query
+	rows, err := db.DB.Query(query, roleID, driveID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	// Get column names dynamically
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get column names: %w", err)
+	}
+
+	return rows, columns, nil
 }
 
 func (db *Database) GetCompanyUsingCompanyID(companyID string) (*models.CompanyResponse, error) {

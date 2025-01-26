@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"fmt"
 	"net/http"
 	"strings"
@@ -285,7 +286,7 @@ func HandleGetCompanyFromID(s models.Store) gin.HandlerFunc {
 
 		companyID := c.Query("id")
 
-		company, err := s.GetCompanyFromCompnayID(companyID)
+		company, err := s.GetCompanyUsingCompanyID(companyID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Internal server error",
@@ -301,6 +302,7 @@ func HandleGetCompanyFromID(s models.Store) gin.HandlerFunc {
 		respSuccess.MapApiResponse(c, http.StatusCreated)
 	}
 }
+
 func HandleGetCompaniesForUser(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -342,5 +344,107 @@ func HandleGetDrivesForUser(s models.Store) gin.HandlerFunc {
 			"drives":       drives,
 			"total_drives": len(drives),
 		})
+	}
+}
+
+type DriveApplicantRequestBody struct {
+	RequiredData string `json:"required_data" binding:"required"`
+}
+
+func HandleGetDriveApplicantsForRole(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleID := c.Query("rid")
+		driveID := c.Query("did")
+
+		if roleID == "" || driveID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ids not found in context"})
+			return
+		}
+
+		var body DriveApplicantRequestBody
+		err := c.BindJSON(&body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "error parsing body"})
+			return
+		}
+
+		rows, columns, err := s.GetDriveApplicantsForRole(roleID, body.RequiredData, driveID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": err.Error(),
+			})
+			return
+		}
+		defer rows.Close()
+
+		c.Header("Content-Disposition", "attachment; filename=applicants.csv")
+		c.Header("Content-Type", "text/csv")
+
+		writer := csv.NewWriter(c.Writer)
+		defer writer.Flush()
+
+		if err := writer.Write(columns); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": fmt.Sprintf("failed to write headers to CSV: %v", err),
+			})
+			return
+		}
+
+		values := make([]interface{}, len(columns))
+		valuePtrs := make([]interface{}, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		for rows.Next() {
+			if err := rows.Scan(valuePtrs...); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error":   "Internal server error",
+					"message": fmt.Sprintf("failed to scan row: %v", err),
+				})
+				return
+			}
+
+			row := make([]string, len(columns))
+			for i, val := range values {
+				if val == nil {
+					row[i] = ""
+					continue
+				}
+
+				switch v := val.(type) {
+				case []byte:
+					row[i] = string(v)
+				case string:
+					row[i] = v
+				case int64:
+					row[i] = fmt.Sprintf("%d", v)
+				case float64:
+					row[i] = fmt.Sprintf("%.2f", v)
+				case bool:
+					row[i] = fmt.Sprintf("%t", v)
+				default:
+					row[i] = fmt.Sprintf("%v", v)
+				}
+			}
+
+			if err := writer.Write(row); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error":   "Internal server error",
+					"message": fmt.Sprintf("failed to write row: %v", err),
+				})
+				return
+			}
+		}
+
+		if err := rows.Err(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": fmt.Sprintf("rows iteration error: %v", err),
+			})
+			return
+		}
 	}
 }

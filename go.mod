@@ -1,6 +1,6 @@
 module github.com/DevSoc-exe/placement-portal-backend
 
-go 1.23.0
+go 1.23.0	
 
 require (
 	github.com/aidarkhanov/nanoid v1.0.8
