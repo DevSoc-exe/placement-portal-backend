@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
@@ -55,13 +56,17 @@ func HandleGetStudentData(s models.Store) gin.HandlerFunc {
 
 		studentData, err := s.GetStudentDataByID(id.(string))
 		if err != nil {
+			fmt.Println(err.Error())
 			c.JSON(500, gin.H{
 				"error": "Internal server error",
 			})
 			return
 		}
 
-		c.JSON(200, studentData)
+		c.JSON(200, gin.H{
+			"data": studentData,
+			"success": true,
+		})
 	}
 }
 

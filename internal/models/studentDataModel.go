@@ -1,6 +1,5 @@
 package models
 
-// ! CGPA to be included in the StudentData struct
 type StudentData struct {
 	ID                      string  `json:"id"`
 	Sem1SGPA                float32 `json:"sgpasem1"`

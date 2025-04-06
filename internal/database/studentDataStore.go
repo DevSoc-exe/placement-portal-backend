@@ -75,7 +75,7 @@ func (db *Database) GetStudentDataByID(id string) (*models.StudentData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	query := `select * from student_data where id = ?;`
+	query := `select id, sgpasem1, sgpasem2, sgpasem3, sgpasem4, sgpasem5, sgpasem6, cgpa, marks10th, marks12th, sgpa_proofs, achievement_certificates, college_id_card, has_backlogs from student_data where id = ?;`
 	row := db.DB.QueryRowContext(ctx, query, id)
 
 	var studentData models.StudentData

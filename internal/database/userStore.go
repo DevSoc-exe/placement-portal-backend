@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -249,12 +248,14 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 	offset := "1"
 	gender := ""
 	branch := ""
+	role := ""
 	name := ""
 	if len(args) > 0 {
 		offset = args[0]
 		gender = args[1]
 		branch = args[2]
-		name = args[3]
+		role = args[3]
+		name = args[4]
 	}
 
 	var query string
@@ -280,6 +281,17 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 	}
 
 	// Build branch filter
+	if role != "" {
+		if query != "" {
+			query += " AND "
+		}
+		roleList := strings.Split(role, ",")
+		rolePlaceholders := strings.Repeat("?,", len(roleList)-1) + "?"
+		queryArgs = append(queryArgs, convertToInterfaceSlice(roleList)...)
+		query += fmt.Sprintf("role IN (%s)", rolePlaceholders)
+	}
+
+	// Build branch filter
 	if name != "" {
 		if query != "" {
 			query += " AND "
@@ -292,11 +304,11 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 
 	// Base query with filters and pagination
 	if query != "" {
-		query = "SELECT id, branch, email, gender, name, rollnum, student_type, year_of_admission, isOnboarded, phone_number FROM users WHERE " + query + " LIMIT 10 OFFSET ?"
+		query = "SELECT id, branch, email, gender, name, rollnum, student_type, year_of_admission, isOnboarded, phone_number, role FROM users WHERE " + query + " LIMIT 10 OFFSET ?"
 	} else {
-		query = "SELECT id, branch, email, gender, name, rollnum, student_type, year_of_admission, isOnboarded, phone_number FROM users LIMIT 10 OFFSET ?"
+		query = "SELECT id, branch, email, gender, name, rollnum, student_type, year_of_admission, isOnboarded, phone_number, role FROM users LIMIT 10 OFFSET ?"
 	}
-	log.Println(query, queryArgs)
+
 	rows, err := db.DB.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, err
@@ -317,6 +329,7 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 			&data.YearOfAdmission,
 			&data.IsOnboarded,
 			&data.PhoneNumber,
+			&data.Role,
 		)
 		if err != nil {
 			return nil, err
@@ -329,6 +342,19 @@ func (db *Database) GetAllStudents(args ...string) ([]*models.UserResponse, erro
 	}
 
 	return studentData, nil
+}
+
+func (db *Database) ToggleUserRole(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	query := `UPDATE users SET role = CASE WHEN role = 'STUDENT' THEN 'MODERATOR' ELSE 'STUDENT' END WHERE id = ?;`
+	_, err := db.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Helper function to convert string slice to interface slice
