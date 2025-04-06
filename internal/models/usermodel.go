@@ -35,6 +35,7 @@ type UserResponse struct {
 	Branch          string `json:"branch"`
 	StudentType     string `json:"student_type"`
 	IsOnboarded     bool   `json:"isOnboarded"`
+	Role			string `json:"role"`
 }
 
 type OTP struct {
