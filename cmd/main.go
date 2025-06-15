@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -31,7 +30,6 @@ func init() {
 
 func main() {
 	r := gin.Default()
-	fmt.Println("in to server")
 	dsn := os.Getenv("DB_CONN")
 	if dsn == "" {
 		panic("database connection string not found")

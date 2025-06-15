@@ -56,10 +56,10 @@ type Role struct {
 
 type DriveBody struct {
 	CompanyID       string  `json:"company_id"`
-	DateOfDrive     string  `json:"drive_date"`
+	DateOfDrive     time.Time  `json:"drive_date"`
 	DriveDuration   int     `json:"drive_duration"`
 	Roles           []Role  `json:"roles"`
-	Deadline        string  `json:"deadline"`
+	Deadline        time.Time  `json:"deadline"`
 	Location        string  `json:"location"`
 	Qualifications  string  `json:"qualifications"`
 	PointsToNote    string  `json:"points_to_note"`
