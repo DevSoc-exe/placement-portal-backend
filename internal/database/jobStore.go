@@ -264,44 +264,36 @@ func (db *Database) GetAllDrivesForUser() ([]models.DriveResponse, error) {
 		return nil, err
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		drive := new(models.DriveResponse)
 
 		if err := rows.Scan(
 			&drive.ID,
 			&drive.CompanyName,
-			&drive.DateOfDrive,
+			&drive.Deadline,
 			&drive.DriveDuration,
 			&drive.Location,
 			&drive.Qualifications,
 			&drive.PointsToNote,
 			&drive.JobDescription,
 			&drive.MinCGPA,
-			&drive.Deadline,
+			&drive.DateOfDrive,
 			&drive.DriveType,
 		); err != nil {
 			return nil, err
 		}
 
-		// // Parse the deadline string to time.Time
-		// parsedDeadline, err := time.Parse("2006-01-02 15:04:05", deadlineStr)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// drive.Deadline = parsedDeadline
-
-		// Retrieve roles as before
 		roles, err := db.GetRolesUsingDriveID(drive.ID)
 		if err != nil {
+			fmt.Print("3: ", err)
 			return nil, err
 		}
 		drive.Roles = roles
-
 		drives = append(drives, *drive)
 	}
 
 	if err := rows.Err(); err != nil {
+		fmt.Print("4: ", err)
 		return nil, err
 	}
 
