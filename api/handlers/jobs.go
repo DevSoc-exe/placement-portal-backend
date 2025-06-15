@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -37,8 +38,10 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 		}
 
 		var driveBody models.DriveBody
-		err := c.BindJSON(&driveBody)
+		decoder := json.NewDecoder(c.Request.Body)
+		err := decoder.Decode(&driveBody)
 		if err != nil {
+
 			respError.Message = string(responses.BindError)
 			respError.MapApiResponse(c, http.StatusBadRequest)
 			return
@@ -46,12 +49,6 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 
 		// driveBody.DateOfDrive = driveBody.DateOfDrive[0:10]
 		var drive models.Drive
-		drive.DateOfDrive, drive.Deadline, err = pkg.ParseDates(driveBody.DateOfDrive, driveBody.Deadline)
-		if err != nil {
-			respError.Message = string("Error parsing dates")
-			respError.MapApiResponse(c, http.StatusBadRequest)
-			return
-		}
 
 		allowed_branches := driveBody.AllowedBranches
 		drive.Cse_allowed = strings.Contains(allowed_branches, "Computer Science and Engineering")
@@ -69,29 +66,32 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 		drive.MinCGPA = driveBody.MinCGPA
 		drive.DriveType = driveBody.DriveType
 		drive.RequiredData = driveBody.RequiredData
+		drive.DateOfDrive = driveBody.DateOfDrive
+		drive.Deadline = driveBody.Deadline
 
 		allowedBranches := strings.Split(allowed_branches, ",")
 		mailingList, err := s.GetUserMailsByBranchesAboveCGPA(allowedBranches, drive.MinCGPA)
+
 		company, err := s.GetCompanyUsingCompanyID(driveBody.CompanyID)
-
 		driveID, err := s.CreateNewDriveUsingObject(drive)
-		driveCrux := pkg.CompanyCrux{
-			Name:     company.Name,
-			Deadline: FormatTime(drive.Deadline),
-			ID:       driveID,
-		}
 
-		// fmt.Println(driveCrux)
 		if err != nil {
 			respError.Message = string(err.Error())
 			respError.MapApiResponse(c, http.StatusInternalServerError)
 			return
 		}
-		mail := pkg.CreateDriveUpdateNotificationEmail(mailingList, driveCrux)
-		err = mail.SendEmail()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send OTP Email.", "message": err.Error()})
-			return
+		if len(mailingList) > 0 {
+			driveCrux := pkg.CompanyCrux{
+				Name:     company.Name,
+				Deadline: FormatTime(drive.Deadline),
+				ID:       driveID,
+			}
+			mail := pkg.CreateDriveUpdateNotificationEmail(mailingList, driveCrux)
+			err = mail.SendEmail()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send Drive Posting Email.", "message": err.Error()})
+				return
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{})
@@ -189,7 +189,6 @@ func HandleDeleteDrive(s models.Store) gin.HandlerFunc {
 
 		}
 		driveToDelete := body.DriveID
-		fmt.Println(driveToDelete)
 
 		data, err := s.GetJobPostingUsingDriveID(driveToDelete)
 
