@@ -254,6 +254,7 @@ func (db *Database) GetAllDrivesForUser() ([]models.DriveResponse, error) {
 
 	rows, err := db.DB.QueryContext(ctx, query)
 	if err != nil {
+		fmt.Errorf("Failed to fetch drives: ", err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -278,16 +279,11 @@ func (db *Database) GetAllDrivesForUser() ([]models.DriveResponse, error) {
 
 		roles, err := db.GetRolesUsingDriveID(drive.ID)
 		if err != nil {
-			fmt.Print("3: ", err)
+			fmt.Errorf("Failed to fetch roles: ", drive.ID, err.Error())
 			return nil, err
 		}
 		drive.Roles = roles
 		drives = append(drives, *drive)
-	}
-
-	if err := rows.Err(); err != nil {
-		fmt.Print("4: ", err)
-		return nil, err
 	}
 
 	return drives, nil
