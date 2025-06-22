@@ -49,6 +49,7 @@ func AddRoutes(s *Server) {
 	server.GET("/company", handlers.HandleGetAllCompanies(s.Str))
 	server.POST("/company", handlers.HandleCreateNewCompany(s.Str))
 	server.GET("/getCompanyFromID", handlers.HandleGetCompanyFromID(s.Str))
+	server.GET("/drives", handlers.HandleGetDrivesForUser(s.Str))
 
 	//* Auth APIs
 	server.GET("/refresh", middleware.RefreshToken(), handlers.HandleRefreshToken(s.Str))
@@ -88,7 +89,6 @@ func AddRoutes(s *Server) {
 		userServer.GET("/user", handlers.HandleGetUserdata(s.Str))
 
 		//* Drive APIs for user
-		userServer.GET("/user/drive", handlers.HandleGetDrivesForUser(s.Str))
 		userServer.GET("/user/drive/:id", handlers.HandleGetDriveUsingID(s.Str))
 		userServer.POST("/user/drive", handlers.HandleApplyToDrive(s.Str))
 

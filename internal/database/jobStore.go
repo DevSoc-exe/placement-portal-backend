@@ -111,7 +111,6 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) (string, e
 	queryToInsertRoles += strings.Join(valueStrings, ", ")
 
 	_, err = tx.ExecContext(ctx, queryToInsertRoles, valueArgs...)
-	fmt.Println(queryToInsertRoles)
 	if err != nil {
 		tx.Rollback()
 		return "", err
@@ -177,7 +176,6 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
     `
 
 	row := db.DB.QueryRowContext(ctx, queryToGetDriveInfo, driveID)
-	fmt.Println(row)
 
 	var drive models.Drive
 
@@ -203,17 +201,12 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 
 	//! Dont Try to understand this, it's a hack, not my proudest moment
 	date := drive.Deadline.UTC().String()
-	fmt.Println("here 3")
 
 	date = date[0:20] + "+0530 IST"
-	fmt.Println("here 4")
 
 	parsedDeadline, err := time.Parse("2006-01-02 15:04:05 -0700 MST", date)
-	fmt.Println("here 5")
 
 	drive.Expired = parsedDeadline.Before(time.Now())
-
-	fmt.Println("here 6")
 
 	roles, err := db.GetRolesUsingDriveID(driveID)
 	if err != nil {
@@ -261,48 +254,36 @@ func (db *Database) GetAllDrivesForUser() ([]models.DriveResponse, error) {
 
 	rows, err := db.DB.QueryContext(ctx, query)
 	if err != nil {
+		fmt.Errorf("Failed to fetch drives: ", err.Error())
 		return nil, err
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		drive := new(models.DriveResponse)
 
 		if err := rows.Scan(
 			&drive.ID,
 			&drive.CompanyName,
-			&drive.DateOfDrive,
+			&drive.Deadline,
 			&drive.DriveDuration,
 			&drive.Location,
 			&drive.Qualifications,
 			&drive.PointsToNote,
 			&drive.JobDescription,
 			&drive.MinCGPA,
-			&drive.Deadline,
+			&drive.DateOfDrive,
 			&drive.DriveType,
 		); err != nil {
 			return nil, err
 		}
 
-		// // Parse the deadline string to time.Time
-		// parsedDeadline, err := time.Parse("2006-01-02 15:04:05", deadlineStr)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// drive.Deadline = parsedDeadline
-
-		// Retrieve roles as before
 		roles, err := db.GetRolesUsingDriveID(drive.ID)
 		if err != nil {
+			fmt.Errorf("Failed to fetch roles: ", drive.ID, err.Error())
 			return nil, err
 		}
 		drive.Roles = roles
-
 		drives = append(drives, *drive)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return drives, nil
