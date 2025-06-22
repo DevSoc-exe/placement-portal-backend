@@ -1,4 +1,5 @@
 {
   "typewriterAutoScroll.offset": 13,
-  "makefile.configureOnOpen": true
+  "makefile.configureOnOpen": true,
+  "typewriterAutoScroll.enable": false
 }

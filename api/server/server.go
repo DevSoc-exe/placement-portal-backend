@@ -61,6 +61,7 @@ func AddRoutes(s *Server) {
 	server.POST("/jobs/addNewDrive", handlers.HandleCreateNewDrive(s.Str))
 	server.POST("/jobs/drive/applicant", handlers.HandleGetDriveApplicantsForRole(s.Str))
 	server.PUT("/admin/user/role/:id", handlers.HandleToggleUserRole(s.Str))
+	server.GET("/jobs/drive/applied/:id", handlers.HandleGetApplicantsForDrive(s.Str))
 
 
 	//* Job Posting API
@@ -79,12 +80,19 @@ func AddRoutes(s *Server) {
 		//* Student Data APIs for admin
 		adminServer.GET("/admin/user/data", handlers.HandleGetAllStudentData(s.Str))
 		adminServer.GET("/admin/user/data/:id", handlers.HandleGetStudentDataByID(s.Str))
+
+
 	}
 
 	//* User APIs
 	userServer := server.Group("/")
 	userServer.Use(middleware.AuthMiddleware())
 	{
+		//* Application routes
+		//! TO BE MOVED TO ADMIN
+		userServer.POST("/drive/placed/:application_id", handlers.HandleMarkStudentAsPlaced(s.Str))
+
+
 		userServer.GET("/user", handlers.HandleGetUserdata(s.Str))
 
 		//* Drive APIs for user

@@ -91,7 +91,7 @@ func HandleUpdateStudentData(s models.Store) gin.HandlerFunc {
 			return
 		}
 
-		err = s.UpdateStudentData(&studentData)
+		err = s.UpdateStudentData(c, &studentData)
 		if err != nil {
 			c.JSON(500, gin.H{
 				"error": "Internal server error",

@@ -1,6 +1,10 @@
 package models
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+	"github.com/DevSoc-exe/placement-portal-backend/internal/models/dto"
+)
 
 type Store interface {
 	CreateUser(user *User) error
@@ -27,6 +31,7 @@ type Store interface {
 	CreateNewDriveUsingObject(driveData Drive) (string, error)
 
 	GetRolesUsingDriveID(driveID string) ([]Role, error)
+	GetApplicantsForDrive(driveID string) ([]dto.StudentApplicationDTO, error)
 
 	//* Company
 	AddNewCompany(company *Company) error
@@ -36,7 +41,10 @@ type Store interface {
 
 	AddStudentData(user *StudentData) error
 	GetStudentDataByID(id string) (*StudentData, error)
-	UpdateStudentData(user *StudentData) error
+	UpdateStudentData(context context.Context, user *StudentData) error
 	DeleteStudentData(id string) error
 	GetAllStudentData(args ...string) ([]*StudentData, error)
+
+	//* Applications Table
+	MarkStudentAsPlaced(updatedById string, applicationId string) error
 }

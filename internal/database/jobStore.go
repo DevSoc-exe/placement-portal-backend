@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
+	"github.com/DevSoc-exe/placement-portal-backend/internal/models/dto"
 	"github.com/aidarkhanov/nanoid"
 )
 
@@ -74,7 +75,7 @@ func (db *Database) createJobsTable() error {
 }
 
 func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	tx, err := db.DB.BeginTx(ctx, nil)
@@ -126,7 +127,7 @@ func (db *Database) CreateNewDriveUsingObject(driveData models.Drive) (string, e
 }
 
 func (db *Database) DeleteJobUsingDriveID(driveID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	queryToDeleteRoles := `
@@ -146,7 +147,7 @@ func (db *Database) DeleteJobUsingDriveID(driveID string) error {
 }
 
 func (db *Database) AddNewCompany(company *models.Company) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	query := `INSERT INTO company (company_id, name, hr_name, overview, contact_email, contact_number, linked_in, website) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
@@ -162,7 +163,7 @@ func (db *Database) AddNewCompany(company *models.Company) error {
 }
 
 func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	queryToGetDriveInfo := `
@@ -203,17 +204,12 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 
 	//! Dont Try to understand this, it's a hack, not my proudest moment
 	date := drive.Deadline.UTC().String()
-	fmt.Println("here 3")
 
 	date = date[0:20] + "+0530 IST"
-	fmt.Println("here 4")
 
 	parsedDeadline, err := time.Parse("2006-01-02 15:04:05 -0700 MST", date)
-	fmt.Println("here 5")
 
 	drive.Expired = parsedDeadline.Before(time.Now())
-
-	fmt.Println("here 6")
 
 	roles, err := db.GetRolesUsingDriveID(driveID)
 	if err != nil {
@@ -225,7 +221,7 @@ func (db *Database) GetJobPostingUsingDriveID(driveID string) (*models.Drive, er
 }
 
 func (db *Database) GetAppliedRole(userID string, driveID string) (*models.Role, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	query := `
@@ -256,7 +252,7 @@ func (db *Database) GetAllDrivesForUser() ([]models.DriveResponse, error) {
 		JOIN company ON drive.company_id = company.company_id
 		ORDER BY drive_date DESC;
 	`
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	rows, err := db.DB.QueryContext(ctx, query)
@@ -317,7 +313,7 @@ func (db *Database) GetRolesUsingDriveID(driveID string) ([]models.Role, error) 
     WHERE drive_id = ?;
     `
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	rows, err := db.DB.QueryContext(ctx, queryToGetRoles, driveID)
@@ -485,4 +481,57 @@ func (db *Database) GetCompanyUsingCompanyID(companyID string) (*models.CompanyR
 	}
 
 	return company, nil
+}
+
+func (db *Database) GetApplicantsForDrive(driveID string) ([]dto.StudentApplicationDTO, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := `
+		SELECT u.id, a.id, u.name, u.branch , u.rollnum,  u.email , u.gender , r.title , a.applied_at, r.id, a.is_placed
+		FROM users AS u
+		JOIN applications AS a
+		ON u.id = a.user_id
+		JOIN role r
+		ON a.role_id = r.id
+		WHERE a.drive_id = ? and a.deleted is null;
+	`
+
+	rows, err := db.DB.QueryContext(ctx, query, driveID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	defer rows.Close()
+
+	students := make([]dto.StudentApplicationDTO, 0)
+
+	for rows.Next() {
+		var student dto.StudentApplicationDTO
+
+		if err := rows.Scan(
+			&student.Id,
+			&student.ApplicationId,
+			&student.Name,
+			&student.Branch,
+			&student.RollNum,
+			&student.Email,
+			&student.Gender,
+			&student.Role,
+			&student.AppliedAt,
+			&student.RoleId,
+			&student.IsPlaced,
+		); err != nil {
+			return nil, err
+		}
+
+		students = append(students, student)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return students, nil
 }

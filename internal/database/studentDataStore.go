@@ -28,7 +28,9 @@ func (s *Database) createStudentDataTable() error {
 		achievement_certificates VARCHAR(255) NOT NULL,
 		college_id_card VARCHAR(255) NOT NULL,
 		has_backlogs BOOLEAN NOT NULL DEFAULT FALSE,
-		CONSTRAINT fk_user FOREIGN KEY (id) REFERENCES users(id)
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		CONSTRAINT fk_user FOREIGN KEY (id) REFERENCES users(id) 
 	);
 	`
 
@@ -88,20 +90,39 @@ func (db *Database) GetStudentDataByID(id string) (*models.StudentData, error) {
 	return &studentData, nil
 }
 
-func (db *Database) UpdateStudentData(user *models.StudentData) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
+func (db *Database) UpdateStudentData(ctx context.Context, user *models.StudentData) error {
+	query := `
+		UPDATE student_data
+		SET
+			sgpasem1 = ?,
+			sgpasem2 = ?,
+			sgpasem3 = ?,
+			sgpasem4 = ?,
+			sgpasem5 = ?,
+			sgpasem6 = ?,
+			cgpa = ?,
+			marks10th = ?,
+			marks12th = ?,
+			sgpa_proofs = ?,
+			achievement_certificates = ?,
+			college_id_card = ?,
+			has_backlogs = ?,
+			updated_at = ?
+		WHERE id = ?;
+	`
 
-	query := `update student_data set sgpasem1 = ?, sgpasem2 = ?, sgpasem3 = ?, sgpasem4 = ?, sgpasem5 = ?, sgpasem6 = ?, cgpa = ?, marks10th = ?, marks12th = ?, sgpa_proofs = ?, achievement_certificates = ?, college_id_card = ?, has_backlogs = ? where id = ?;`
-
-	_, err := db.DB.ExecContext(ctx, query, user.Sem1SGPA, user.Sem2SGPA, user.Sem3SGPA, user.Sem4SGPA, user.Sem5SGPA, user.Sem6SGPA, user.Cgpa, user.Marks10th, user.Marks12th, user.SgpaProofs, user.AchievementCertificates, user.CollegeIdCard, user.HasBacklogs, user.ID)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err := db.DB.ExecContext(ctx, query,
+		user.Sem1SGPA, user.Sem2SGPA, user.Sem3SGPA, user.Sem4SGPA,
+		user.Sem5SGPA, user.Sem6SGPA, user.Cgpa,
+		user.Marks10th, user.Marks12th,
+		user.SgpaProofs, user.AchievementCertificates,
+		user.CollegeIdCard, user.HasBacklogs,
+		time.Now(),
+		user.ID,
+	)
+	return err
 }
+
 
 func (db *Database) DeleteStudentData(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)

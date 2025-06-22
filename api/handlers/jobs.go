@@ -71,8 +71,8 @@ func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 		drive.RequiredData = driveBody.RequiredData
 
 		allowedBranches := strings.Split(allowed_branches, ",")
-		mailingList, err := s.GetUserMailsByBranchesAboveCGPA(allowedBranches, drive.MinCGPA)
-		company, err := s.GetCompanyUsingCompanyID(driveBody.CompanyID)
+		mailingList, _ := s.GetUserMailsByBranchesAboveCGPA(allowedBranches, drive.MinCGPA)
+		company, _ := s.GetCompanyUsingCompanyID(driveBody.CompanyID)
 
 		driveID, err := s.CreateNewDriveUsingObject(drive)
 		driveCrux := pkg.CompanyCrux{
@@ -343,6 +343,33 @@ func HandleGetDrivesForUser(s models.Store) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"drives":       drives,
 			"total_drives": len(drives),
+		})
+	}
+}
+
+func HandleGetApplicantsForDrive(s models.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// TODO: require handling of query params
+		driveID := c.Param("id")
+
+		if driveID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "drive id not found"})
+			return
+		}
+
+		students, err := s.GetApplicantsForDrive(driveID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Internal server error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success":        true,
+			"students":       students,
+			"total_students": len(students),
 		})
 	}
 }
