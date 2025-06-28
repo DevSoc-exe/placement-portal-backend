@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"log"
 
 	"github.com/DevSoc-exe/placement-portal-backend/internal/models"
 	"github.com/DevSoc-exe/placement-portal-backend/internal/pkg"
@@ -24,77 +25,45 @@ func FormatTime(t time.Time) string {
 
 func HandleCreateNewDrive(s models.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// user_id, exists := c.Get("user_id")
-		// if !exists {cc
-		// 	c.AbortWithStatus(http.StatusUnauthorized)
-		// 	return
-		// }
-
-		respError := responses.ApiResponse{
+		var driveRequestBody models.DriveBody
+		response := responses.ApiResponse{
 			Success: false,
 			Message: "",
 			Data:    nil,
 		}
-
-		var driveBody models.DriveBody
-		err := c.BindJSON(&driveBody)
-		if err != nil {
-			respError.Message = string(responses.BindError)
-			respError.MapApiResponse(c, http.StatusBadRequest)
+		if err := c.BindJSON(&driveRequestBody); err != nil {
+			response.Success = false;
+			response.Message = string(responses.BindError)
+			response.MapApiResponse(c, http.StatusBadRequest)
 			return
 		}
+		var driveSaveObject models.Drive = pkg.DriveDTOMapper(driveRequestBody);
+		allowedBranches := strings.Split(driveRequestBody.AllowedBranches, ",");
+		mailingList, err := s.GetUserMailsByBranchesAboveCGPA(allowedBranches, driveSaveObject.MinCGPA)
+		company, err := s.GetCompanyUsingCompanyID(driveRequestBody.CompanyID)
+		driveID, err := s.CreateNewDriveUsingObject(driveSaveObject)
 
-		// driveBody.DateOfDrive = driveBody.DateOfDrive[0:10]
-		var drive models.Drive
-		drive.DateOfDrive, drive.Deadline, err = pkg.ParseDates(driveBody.DateOfDrive, driveBody.Deadline)
 		if err != nil {
-			respError.Message = string("Error parsing dates")
-			respError.MapApiResponse(c, http.StatusBadRequest)
+			response.Message = string(err.Error())
+			response.Success = false
+			response.MapApiResponse(c, http.StatusInternalServerError)
 			return
 		}
-
-		allowed_branches := driveBody.AllowedBranches
-		drive.Cse_allowed = strings.Contains(allowed_branches, "Computer Science and Engineering")
-		drive.Ece_allowed = strings.Contains(allowed_branches, "Electronics and Communication Engineering")
-		drive.Mech_allowed = strings.Contains(allowed_branches, "Mechanical Engineering")
-		drive.Civ_allowed = strings.Contains(allowed_branches, "Civil Engineering")
-
-		drive.CompanyID = driveBody.CompanyID
-		drive.DriveDuration = driveBody.DriveDuration
-		drive.Roles = driveBody.Roles
-		drive.Location = driveBody.Location
-		drive.Qualifications = driveBody.Qualifications
-		drive.PointsToNote = driveBody.PointsToNote
-		drive.JobDescription = driveBody.JobDescription
-		drive.MinCGPA = driveBody.MinCGPA
-		drive.DriveType = driveBody.DriveType
-		drive.RequiredData = driveBody.RequiredData
-
-		allowedBranches := strings.Split(allowed_branches, ",")
-		mailingList, err := s.GetUserMailsByBranchesAboveCGPA(allowedBranches, drive.MinCGPA)
-		company, err := s.GetCompanyUsingCompanyID(driveBody.CompanyID)
-
-		driveID, err := s.CreateNewDriveUsingObject(drive)
-		driveCrux := pkg.CompanyCrux{
-			Name:     company.Name,
-			Deadline: FormatTime(drive.Deadline),
-			ID:       driveID,
+		var totalStudents = len(mailingList);
+		if totalStudents > 0 {
+			driveCrux := pkg.CompanyCrux{
+				Name:     company.Name,
+				Deadline: FormatTime(driveSaveObject.Deadline),
+				ID:       driveID,
+			}
+			mail := pkg.CreateDriveUpdateNotificationEmail(mailingList, driveCrux)
+			err = mail.SendEmail()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send Drive Posting Email.", "message": err.Error()})
+				return
+			}
+			log.Printf("Mail Sent to %d students.", totalStudents);
 		}
-
-		// fmt.Println(driveCrux)
-		if err != nil {
-			respError.Message = string(err.Error())
-			respError.MapApiResponse(c, http.StatusInternalServerError)
-			return
-		}
-		mail := pkg.CreateDriveUpdateNotificationEmail(mailingList, driveCrux)
-		err = mail.SendEmail()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Send OTP Email.", "message": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{})
 
 		respSuccess := responses.ApiResponse{
 			Success: true,
@@ -189,7 +158,6 @@ func HandleDeleteDrive(s models.Store) gin.HandlerFunc {
 
 		}
 		driveToDelete := body.DriveID
-		fmt.Println(driveToDelete)
 
 		data, err := s.GetJobPostingUsingDriveID(driveToDelete)
 

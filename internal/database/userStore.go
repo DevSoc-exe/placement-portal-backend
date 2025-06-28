@@ -380,9 +380,6 @@ func (db *Database) GetUserMailsByBranchesAboveCGPA(branches []string, cgpaLimit
 		cgpaLimit,
 	)
 
-	fmt.Println("Printing the Query")
-	fmt.Println(query)
-
 	rows, err := db.DB.QueryContext(ctx, query, convertToInterfaceSlice(branches)...)
 	if err != nil {
 		return nil, err
