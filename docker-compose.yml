@@ -1,9 +1,57 @@
 version: '3.8'
 
 services:
+  # Frontend service (Next.js)
+  frontend:
+    build:
+      context: ../placement-portal-frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: http://localhost:8081
+    container_name: placement-portal-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8081
+    depends_on:
+      - backend
+    networks:
+      - placement-portal-network
+
+  # Backend service (Go)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: placement-portal-backend
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=testdb
+      - DB_CONN=user:password@tcp(mysql:3306)/testdb?charset=utf8mb4&parseTime=True&loc=Local
+      - ENVIRONMENT=PRODUCTION
+      - GIN_MODE=release
+      - DOMAIN=localhost:3000
+      - SENDER_EMAIL=your-email@example.com
+      - SENDER_PASSWORD=your-email-password
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - placement-portal-network
+
+  # Database service (MySQL)
   mysql:
     image: mysql:8.0
-    container_name: mysql-tpc-portal-container
+    container_name: placement-portal-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
@@ -14,12 +62,16 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
     networks:
-      - go-mysql-network
+      - placement-portal-network
 
 volumes:
   mysql_data:
 
 networks:
-  go-mysql-network:
+  placement-portal-network:
     driver: bridge

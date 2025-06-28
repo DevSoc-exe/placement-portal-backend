@@ -12,12 +12,8 @@ import (
 )
 
 func CORSMiddleware(c *gin.Context) {
-	var origin string
-	env := os.Getenv("ENVIRONMENT")
-
-	if env == "PRODUCTION" {
-		origin = "https://tpc-portal.classikh.me"
-	} else {
+	origin := os.Getenv("CORS_ORIGIN")
+	if origin == "" {
 		origin = "http://localhost:3000"
 	}
 
