@@ -18,5 +18,5 @@ production_build:
 	@go build -tags netgo -ldflags '-s -w' -o $(BINARY_DIR)/$(BINARY_NAME) cmd/main.go
 	@echo "Deployed $(BINARY_NAME) successfully"
 
-deploy:
+deploy: production_build
 	@./$(BINARY_DIR)/$(BINARY_NAME)
