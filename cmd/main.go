@@ -11,12 +11,12 @@ import (
 )
 
 func init() {
-	config.InitEnv()
-
 	// No need to create keys every time during development
 	env := os.Getenv("ENVIRONMENT")
 	if env == "PRODUCTION" {
 		config.CreateKeys()
+	} else {
+		config.InitEnv()
 	}
 
 	mode := os.Getenv("GIN_MODE")
