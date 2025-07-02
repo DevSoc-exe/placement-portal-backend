@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	// "time"
+	"time"
 
 	// "github.com/DevSoc-exe/placement-portal-backend/internal/models"
 	// "github.com/gin-gonic/gin"
@@ -23,18 +23,21 @@ func CreateDatabase(db *sql.DB) *Database {
 }
 
 func ConnectToDB(dsn string) (*sql.DB, error) {
-	// Open a connection to the database
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, err
-	}
+    // Open a connection to the database
+    db, err := sql.Open("mysql", dsn)
+    if err != nil {
+        return nil, err
+    }
 
-	// Verify the connection to the database
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
+    db.SetMaxOpenConns(100) 
+    db.SetMaxIdleConns(10) 
+    db.SetConnMaxLifetime(30 * time.Minute) 
 
-	return db, nil
+    if err := db.Ping(); err != nil {
+        return nil, err
+    }
+
+    return db, nil 
 }
 
 func (s *Database) InitDB() error {
