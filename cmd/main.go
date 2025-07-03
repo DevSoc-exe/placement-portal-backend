@@ -13,7 +13,7 @@ import (
 func init() {
 	// No need to create keys every time during development
 	env := os.Getenv("ENVIRONMENT")
-	if env == "PRODUCTION" {
+	if env == "PRODUCTION" || env == "TESTING" {
 		config.CreateKeys()
 	} else {
 		config.InitEnv()
